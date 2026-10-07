@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load op %}
+{% block titulo %}{{ demanda.codigo }}{% endblock %}
+{% block conteudo %}
+<p class="pequeno"><a href="{% url 'demanda_lista' %}">← Demandas</a></p>
+<div class="cabecalho">
+  <div>
+    <div class="suave">{{ demanda.codigo }} · {{ demanda.sistema.nome }}</div>
+    <h1>{{ demanda.titulo }}</h1>
+    <span class="badge s-{{ demanda.status }}">{{ demanda.get_status_display }}</span>
+    <span class="badge p-{{ demanda.prioridade }}">Prioridade {{ demanda.get_prioridade_display|lower }}</span>
+    <span class="badge t-{{ demanda.tipo }}">{{ demanda.get_tipo_display }}</span>
+  </div>
+  {% if pode_editar %}
+  <div class="acoes">
+    {% if demanda.responsavel != user and demanda.aberta %}
+    <form method="post" action="{% url 'demanda_assumir' demanda.pk %}">{% csrf_token %}<button class="btn" type="submit">Assumir</button></form>
+    {% endif %}
+    <a class="btn sec" href="{% url 'demanda_editar' demanda.pk %}">Editar</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card">
+  {% if demanda.bloqueia_operacao and demanda.aberta %}<div class="alerta"><b>Impede o L42 de operar</b> enquanto não for resolvida.</div>{% endif %}
+  {% if demanda.item_faltante %}<div class="faltante"><b>Item faltante:</b> {{ demanda.item_faltante }}{% if demanda.quantidade %} · quantidade: {{ demanda.quantidade }}{% endif %}</div>{% endif %}
+  <dl class="meta">
+    <div><dt>Responsável</dt><dd>{{ demanda.responsavel|nome }}</dd></div>
+    <div><dt>Prazo</dt><dd {% if demanda.atrasada %}class="atrasada"{% endif %}>{% if demanda.prazo %}{{ demanda.prazo|date:"d/m/Y" }}{% if demanda.atrasada %} (atrasada){% endif %}{% else %}Sem prazo{% endif %}</dd></div>
+    <div><dt>Aberta por</dt><dd>{{ demanda.criado_por|nome }} em {{ demanda.criado_em|date:"d/m/Y" }}</dd></div>
+    {% if demanda.concluida_em %}<div><dt>Concluída em</dt><dd>{{ demanda.concluida_em|date:"d/m/Y H:i" }}</dd></div>{% endif %}
+  </dl>
+  {% if demanda.descricao %}<h3>Descrição</h3><p class="descricao">{{ demanda.descricao }}</p>{% endif %}
+</div>
+
+<div class="grid g2 secao">
+  <section>
+    <h2>Histórico</h2>
+    <div class="card">
+      <ul class="linha-tempo">
+        {% for a in atualizacoes %}
+        <li>
+          <div class="quando">{{ a.criado_em|date:"d/m/Y H:i" }} · {{ a.autor|nome }}</div>
+          {% if a.status_novo %}<div>{{ a.get_status_anterior_display }} → <b>{{ a.get_status_novo_display }}</b></div>{% endif %}
+          {% if a.texto %}<div class="descricao">{{ a.texto }}</div>{% endif %}
+        </li>
+        {% empty %}<li class="suave">Sem registros.</li>{% endfor %}
+      </ul>
+    </div>
+  </section>
+  {% if pode_editar %}
+  <section>
+    <h2>Registrar andamento</h2>
+    <form method="post" action="{% url 'demanda_atualizar' demanda.pk %}" class="card">{% csrf_token %}
+      <div class="campo">{{ form.status.label_tag }}{{ form.status }}</div>
+      <div class="campo">{{ form.texto.label_tag }}{{ form.texto }}</div>
+      <button class="btn" type="submit">Registrar</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

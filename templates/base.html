@@ -1,0 +1,118 @@
+{% load static op %}<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Painel{% endblock %} · L42</title>
+<link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+{% if user.is_authenticated %}
+
+<div class="bridge">
+
+  <!-- ============================================
+       RAIL LATERAL (menu tipo painel de instrumentos)
+       ============================================ -->
+  <aside class="rail">
+    <a class="rail-marca" href="{% url 'dashboard' %}">
+      <span class="rail-marca-simbolo">◈</span>
+      <span class="rail-marca-texto">
+        <strong>NAVIUS</strong>
+        <small>OP · v2.4</small>
+      </span>
+    </a>
+
+    <div class="rail-embarcacao">
+      <span class="rail-emb-simbolo">⛴</span>
+      <div>
+        <strong>USV L42</strong>
+        <small>Umi Polaris</small>
+      </div>
+    </div>
+
+    {% with u=request.resolver_match.url_name %}
+    <nav class="rail-nav">
+      <div class="rail-grupo">
+        <div class="rail-grupo-titulo">Operação</div>
+        <a href="{% url 'dashboard' %}" class="{% if u == 'dashboard' %}ativo{% endif %}">
+          <span class="ic">▦</span><span>Visão geral</span>
+        </a>
+        <a href="{% url 'missoes' %}" class="{% if u == 'missoes' %}ativo{% endif %}">
+          <span class="ic">≡</span><span>Missões</span>
+        </a>
+        <a href="#"><span class="ic">◷</span><span>Timeline</span></a>
+        <a href="#"><span class="ic">✦</span><span>Navegação</span></a>
+      </div>
+
+      <div class="rail-grupo">
+        <div class="rail-grupo-titulo">Equipamento</div>
+        <a href="{% url 'manutencao' %}">Manutenção</a>
+        <a href="#"><span class="ic">▤</span><span>Baterias</span></a>
+        <a href="#"><span class="ic">↻</span><span>Propulsão</span></a>
+        <a href="#"><span class="ic">✆</span><span>Comunicação</span></a>
+      </div>
+
+      <div class="rail-grupo">
+        <div class="rail-grupo-titulo">Registro</div>
+        <a href="#"><span class="ic">⚠</span><span>Incidentes</span></a>
+        <a href="#"><span class="ic">▣</span><span>Evidências</span></a>
+        <a href="#"><span class="ic">☑</span><span>Checklists</span></a>
+        <a href="#"><span class="ic">≡</span><span>Relatórios</span></a>
+      </div>
+
+      <div class="rail-grupo">
+        <div class="rail-grupo-titulo">Sistema</div>
+        <a href="{% url 'equipe' %}"><span class="ic">♟</span><span>Equipe</span></a>
+        <a href="#"><span class="ic">▤</span><span>Auditoria</span></a>
+      </div>
+    </nav>
+    {% endwith %}
+
+    <div class="rail-rodape">
+      <div class="rail-pill {{ estado|lower }}">
+        <span class="dot"></span>{{ estado_titulo }}
+      </div>
+      <small class="rail-rodape-hora">{% now "d/m H:i" %} UTC-3</small>
+    </div>
+  </aside>
+
+  <!-- ============================================
+       ÁREA PRINCIPAL
+       ============================================ -->
+  <div class="bridge-main">
+
+    <!-- BARRA SUPERIOR (faixa fina, tipo cabeçalho de console) -->
+    <header class="faixa">
+      <div class="faixa-esq">
+        <span class="faixa-selo">USV</span>
+        <span class="faixa-nome">Umi Polaris <b>L42</b></span>
+        <span class="faixa-sep">|</span>
+        <span class="faixa-info">IMO {{ embarcacao.imo|default:"—" }}</span>
+        <span class="faixa-info">MMSI {{ embarcacao.mmsi|default:"—" }}</span>
+        <span class="faixa-info">Base {{ embarcacao.base|default:"Açu · RJ" }}</span>
+      </div>
+      <div class="faixa-dir">
+        <button class="faixa-btn" title="Notificações">🔔<span class="faixa-badge">3</span></button>
+        <span class="faixa-usuario">{{ user|nome }} <span class="papel">{{ papel_label }}</span></span>
+        <form method="post" action="{% url 'logout' %}" class="faixa-sair">
+          {% csrf_token %}<button type="submit">sair</button>
+        </form>
+      </div>
+    </header>
+
+    <main class="bridge-conteudo">
+      {% if messages %}
+        <ul class="msgs">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% block conteudo %}{% endblock %}
+    </main>
+
+  </div>
+</div>
+
+{% else %}
+<main class="login-wrap">{% block conteudo_publico %}{% endblock %}</main>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Sem permissão{% endblock %}
+{% block conteudo %}
+<div class="card" style="max-width:520px;margin:4rem auto">
+  <h1>Esta ação é só para trabalhadores</h1>
+  <p>Seu perfil de diretor permite acompanhar o barco e as demandas, mas não alterá-las.</p>
+  <a class="btn" href="{% url 'dashboard' %}">Voltar ao painel</a>
+</div>
+{% endblock %}

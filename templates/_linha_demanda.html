@@ -1,0 +1,12 @@
+{% load op %}
+<tr {% if d.bloqueia_operacao and d.aberta %}class="bloqueia"{% endif %}>
+  <td class="titulo">
+    <a href="{{ d.get_absolute_url }}">{{ d.titulo }}</a>
+    <div class="pequeno suave">{{ d.codigo }} · {{ d.sistema.nome }}{% if d.item_faltante %} · falta: {{ d.item_faltante }}{% if d.quantidade %} ({{ d.quantidade }}){% endif %}{% endif %}</div>
+    {% if d.bloqueia_operacao and d.aberta %}<span class="flag">Impede operação</span>{% endif %}
+  </td>
+  <td><span class="badge p-{{ d.prioridade }}">{{ d.get_prioridade_display }}</span></td>
+  <td><span class="badge s-{{ d.status }}">{{ d.get_status_display }}</span></td>
+  <td>{{ d.responsavel|nome }}</td>
+  <td>{% if d.prazo %}<span {% if d.atrasada %}class="atrasada"{% endif %}>{{ d.prazo|date:"d/m/Y" }}{% if d.atrasada %} (atrasada){% endif %}</span>{% else %}—{% endif %}</td>
+</tr>

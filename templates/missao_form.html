@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block titulo %}Nova missão{% endblock %}
+
+{% block conteudo %}
+
+<div class="cabecalho">
+
+    <div>
+        <div class="suave">
+            OPERAÇÃO / MISSÕES
+        </div>
+
+        <h1>Nova missão</h1>
+
+        <p class="suave">
+            Cadastre uma nova missão operacional do L42.
+        </p>
+    </div>
+
+    <div class="acoes">
+        <a href="{% url 'missoes' %}" class="btn sec">
+            ← Voltar
+        </a>
+    </div>
+
+</div>
+
+
+<form method="post">
+
+    {% csrf_token %}
+
+
+    <section class="card">
+
+        <h2>Dados da missão</h2>
+
+        <div class="grid g2">
+
+            <div class="campo">
+                {{ form.titulo.label_tag }}
+                {{ form.titulo }}
+
+                {% for error in form.titulo.errors %}
+                    <div class="erro">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+
+            <div class="campo">
+                {{ form.local.label_tag }}
+                {{ form.local }}
+
+                {% for error in form.local.errors %}
+                    <div class="erro">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+
+            <div class="campo">
+                {{ form.responsavel.label_tag }}
+                {{ form.responsavel }}
+            </div>
+
+
+            <div class="campo">
+                {{ form.status.label_tag }}
+                {{ form.status }}
+            </div>
+
+
+            <div class="campo">
+                {{ form.inicio_previsto.label_tag }}
+                {{ form.inicio_previsto }}
+            </div>
+
+        </div>
+
+
+        <div class="campo">
+
+            {{ form.objetivo.label_tag }}
+            {{ form.objetivo }}
+
+        </div>
+
+
+        <div class="campo">
+
+            {{ form.observacoes.label_tag }}
+            {{ form.observacoes }}
+
+        </div>
+
+    </section>
+
+
+    <div class="acoes secao">
+
+        <a href="{% url 'missoes' %}" class="btn sec">
+            Cancelar
+        </a>
+
+        <button type="submit" class="btn">
+            Criar missão
+        </button>
+
+    </div>
+
+</form>
+
+{% endblock %}

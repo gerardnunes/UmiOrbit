@@ -1,0 +1,49 @@
+```django
+{% load static %}
+
+{% block titulo %}Entrar{% endblock %}
+
+{% block conteudo %}
+<link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+<div class="login-wrap">
+
+    <div class="login">
+
+        <h1>L42</h1>
+
+        <p>
+            Gestão do barco autônomo. Entre com seu usuário.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alerta">
+                    Usuário ou senha incorretos.
+                </div>
+            {% endif %}
+
+            <div class="campo">
+                <label for="id_username">Usuário</label>
+                {{ form.username }}
+            </div>
+
+            <div class="campo">
+                <label for="id_password">Senha</label>
+                {{ form.password }}
+            </div>
+
+            <input type="hidden" name="next" value="{{ next }}">
+
+            <button class="btn" type="submit">
+                Entrar
+            </button>
+        </form>
+
+    </div>
+
+</div>
+{% endblock %}
+```

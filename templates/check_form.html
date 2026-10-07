@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar {{ object.codigo }}{% else %}Novo check{% endif %}{% endblock %}
+{% block conteudo %}
+<p class="pequeno"><a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'demanda_lista' %}{% endif %}">← Voltar</a></p>
+<h1>{% if object %}Editar {{ object.codigo }}{% else %}Nova demanda{% endif %}</h1>
+<form method="post" class="card">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="campo">{{ form.titulo.label_tag }}{{ form.titulo }}{{ form.titulo.errors }}</div>
+  <div class="form-grid">
+    <div class="campo">{{ form.tipo.label_tag }}{{ form.tipo }}{{ form.tipo.errors }}</div>
+    <div class="campo">{{ form.sistema.label_tag }}{{ form.sistema }}{{ form.sistema.errors }}</div>
+    <div class="campo">{{ form.prioridade.label_tag }}{{ form.prioridade }}{{ form.prioridade.errors }}</div>
+    <div class="campo">{{ form.classe.label_tag }}{{ form.classe }}{{ form.classe.errors }}</div>
+  </div>
+  <div class="form-grid">
+    <div class="campo">{{ form.item_faltante.label_tag }}{{ form.item_faltante }}<div class="ajuda">{{ form.item_faltante.help_text }}</div>{% for e in form.item_faltante.errors %}<div class="erro">{{ e }}</div>{% endfor %}</div>
+    <div class="campo">{{ form.quantidade.label_tag }}{{ form.quantidade }}{{ form.quantidade.errors }}</div>
+  </div>
+  <div class="campo check"><label>{{ form.bloqueia_operacao }} {{ form.bloqueia_operacao.label }}</label><div class="ajuda">{{ form.bloqueia_operacao.help_text }}</div></div>
+  <div class="campo">{{ form.descricao.label_tag }}{{ form.descricao }}{{ form.descricao.errors }}</div>
+  <div class="form-grid">
+    <div class="campo">{{ form.responsavel.label_tag }}{{ form.responsavel }}{{ form.responsavel.errors }}</div>
+    <div class="campo">{{ form.prazo.label_tag }}{{ form.prazo }}{{ form.prazo.errors }}</div>
+    {% if form.status %}<div class="campo">{{ form.status.label_tag }}{{ form.status }}{{ form.status.errors }}</div>{% endif %}
+  </div>
+  <button class="btn" type="submit">Salvar</button>
+</form>
+{% endblock %}

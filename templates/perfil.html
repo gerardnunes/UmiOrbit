@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block titulo %}Meu perfil{% endblock %}
+{% block conteudo %}
+<h1>Meu perfil</h1>
+<div class="grid g2">
+  <form method="post" class="card">{% csrf_token %}
+    <p class="suave">Usuário <b>{{ user.username }}</b> · {{ papel_label }}</p>
+    <div class="form-grid">
+      {% for f in uform %}<div class="campo">{{ f.label_tag }}{{ f }}{{ f.errors }}</div>{% endfor %}
+      {% for f in pform %}<div class="campo">{{ f.label_tag }}{{ f }}{{ f.errors }}</div>{% endfor %}
+    </div>
+    <button class="btn" type="submit">Salvar</button>
+  </form>
+  <section>
+    <h2>Minhas demandas em aberto</h2>
+    {% include "_tabela_demandas.html" with itens=minhas vazio="Nenhuma demanda atribuída a você." %}
+  </section>
+</div>
+{% endblock %}

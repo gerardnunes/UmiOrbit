@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% load op static %}
+{% block titulo %}Visão geral{% endblock %}
+
+{% block conteudo %}
+
+<!-- ============================================
+     CABEÇALHO DA PÁGINA
+     ============================================ -->
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Passadiço · visão geral</div>
+    <h1>Umi Polaris <span>L42</span></h1>
+    <div class="pagina-meta">
+      <span class="pagina-estado {{ estado|lower }}">
+        <span class="dot"></span>{{ estado_titulo }}
+      </span>
+      <span>{{ prontidao }}% prontidão · {{ concluidas }}/{{ total }} demandas</span>
+      {% if n_bloqueantes %}
+        <span class="pagina-bloqueio">{{ n_bloqueantes }} bloqueio{{ n_bloqueantes|pluralize }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <div class="relogio">
+      <span class="relogio-hora">{% now "H:i" %}</span>
+      <span class="relogio-data">{% now "d/m/Y" %}</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     CONSOLE PRINCIPAL
+     ============================================ -->
+<div class="console">
+
+  <!-- LINHA 1: barco (2 cols) + prontidão (1 col) -->
+  <section class="console-barco">
+    <div class="barco-moldura {{ estado }}">
+
+      <div class="barco-cena" id="barco-cena">
+        <div class="barco-flutuante">
+          <!-- Wrapper: pontos ficam DENTRO dele, então balançam junto -->
+          <div class="barco-img-wrap" id="barco-img-wrap">
+            <img src="{% static 'img/barco-l42.png' %}" alt="USV L42">
+            <!-- Os pontos vermelhos entram aqui via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="barco-legenda">
+        <span class="leg"><span class="dot ok"></span>Starlink</span>
+        <span class="leg"><span class="dot ok"></span>VPN</span>
+        <span class="leg"><span class="dot ok"></span>N2N</span>
+        <span class="leg"><span class="dot atencao"></span>Bateria {{ bateria_pct }}%</span>
+        <span class="leg-sep"></span>
+        <span class="leg-hora">atualizado {{ agora|date:"H:i" }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="console-prontidao">
+    <header class="painel-titulo">
+      <span>Prontidão operacional</span>
+      <span class="painel-titulo-acao">FSM</span>
+    </header>
+    <div class="prontidao-bloco">
+      <div class="prontidao-simbolo {{ estado|lower }}"></div>
+      <div class="prontidao-info">
+        <strong>{{ estado_titulo }}</strong>
+        <small>{{ estado_texto|truncatechars:80 }}</small>
+      </div>
+    </div>
+    <div class="prontidao-barra">
+      <div class="prontidao-trilha"><span style="width:{{ prontidao }}%"></span></div>
+      <div class="prontidao-marca"><b>{{ prontidao }}%</b> concluído</div>
+    </div>
+    {% if n_bloqueantes %}
+      <div class="prontidao-alerta">
+        <b>{{ n_bloqueantes }}</b> pendência{{ n_bloqueantes|pluralize }}
+        impede{{ n_bloqueantes|pluralize:",m" }} operar.
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- LINHA 2: instrumentos -->
+  <section class="instrumentos">
+    <div class="instrumento">
+      <div class="instrumento-rotulo">Rumo</div>
+      <div class="instrumento-valor">{{ rumo|default:"—" }}<small>°</small></div>
+      <div class="instrumento-escala"><span style="width:{{ rumo|default:0 }}%"></span></div>
+    </div>
+    <div class="instrumento">
+      <div class="instrumento-rotulo">Velocidade</div>
+      <div class="instrumento-valor">{{ velocidade|default:"0.0" }}<small>kn</small></div>
+      <div class="instrumento-escala"><span style="width:{{ velocidade_pct|default:0 }}%"></span></div>
+    </div>
+    <div class="instrumento">
+      <div class="instrumento-rotulo">Profundidade</div>
+      <div class="instrumento-valor">{{ profundidade|default:"—" }}<small>m</small></div>
+      <div class="instrumento-escala"><span style="width:{{ profundidade_pct|default:0 }}%"></span></div>
+    </div>
+    <div class="instrumento">
+      <div class="instrumento-rotulo">Propulsão</div>
+      <div class="instrumento-valor">{{ rpm|default:"0" }}<small>rpm</small></div>
+      <div class="instrumento-escala"><span style="width:{{ rpm_pct|default:0 }}%"></span></div>
+    </div>
+    <div class="instrumento">
+      <div class="instrumento-rotulo">Bateria</div>
+      <div class="instrumento-valor">{{ bateria_pct }}<small>%</small></div>
+      <div class="instrumento-escala {{ bateria_nivel }}"><span style="width:{{ bateria_pct|default:0 }}%"></span></div>
+    </div>
+    <div class="instrumento">
+      <div class="instrumento-rotulo">Vento</div>
+      <div class="instrumento-valor">{{ ambiente.vento|default:"—" }}<small>kn</small></div>
+      <div class="instrumento-escala"><span style="width:{{ ambiente.vento_pct|default:0 }}%"></span></div>
+    </div>
+  </section>
+
+  <!-- LINHA 3: três painéis -->
+  <section class="painel">
+    <header class="painel-titulo">
+      <span>Missões recentes</span>
+      <a class="painel-titulo-acao" href="{% url 'demanda_lista' %}">ver todas →</a>
+    </header>
+    <table class="tabela">
+      <thead>
+        <tr>
+          <th class="mono">ID</th>
+          <th>Missão</th>
+          <th class="mono">Hora</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in operacoes %}
+          <tr>
+            <td class="mono">{{ o.codigo }}</td>
+            <td>{{ o.titulo }}</td>
+            <td class="mono">{{ o.criado_em|date:"d/m H:i" }}</td>
+            <td><span class="dot {{ o.cor_status }}"></span>{{ o.get_status_display }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="tabela-vazio">Sem missões registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="painel">
+    <header class="painel-titulo">
+      <span>Condições no mar</span>
+      <span class="painel-titulo-acao">METOC</span>
+    </header>
+    <ul class="leitura">
+      <li><span>Vento</span><b>{{ ambiente.vento|default:"—" }} kn <em>{{ ambiente.vento_dir|default:"" }}</em></b></li>
+      <li><span>Ondas</span><b>{{ ambiente.onda|default:"—" }} m <em>{{ ambiente.onda_periodo|default:"" }} s</em></b></li>
+      <li><span>Corrente</span><b>{{ ambiente.corrente|default:"—" }} kn <em>{{ ambiente.corrente_dir|default:"" }}</em></b></li>
+      <li><span>Visibilidade</span><b>{{ ambiente.visibilidade|default:"—" }} nm</b></li>
+      <li><span>Maré</span><b>{{ ambiente.mare|default:"—" }}</b></li>
+      <li><span>Ar · Água</span><b>{{ ambiente.temp_ar|default:"—" }}° · {{ ambiente.temp_agua|default:"—" }}°</b></li>
+    </ul>
+  </section>
+
+  <section class="painel">
+    <header class="painel-titulo">
+      <span>Sistemas de bordo</span>
+      <span class="painel-titulo-acao">SYS</span>
+    </header>
+    <ul class="sistemas">
+      {% for s in sistemas %}
+        <li>
+          <span class="dot {{ s.nivel }}"></span>
+          <span class="sistemas-nome">{{ s.nome }}</span>
+          <span class="sistemas-valor mono">{{ s.pct }}%</span>
+        </li>
+      {% empty %}
+        <li class="tabela-vazio">Nenhum sistema cadastrado.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- LINHA 4: mapa + diário -->
+  <section class="painel painel-mapa">
+    <header class="painel-titulo">
+      <span>Posição e trajeto</span>
+      <span class="painel-titulo-acao">AIS</span>
+    </header>
+    <div class="mapa">
+      <div class="mapa-grade"></div>
+      <div class="mapa-centro">
+        <span class="mapa-pos">◉</span>
+        <span class="mapa-coord mono">{{ embarcacao.lat|default:"-21.7256" }}, {{ embarcacao.lon|default:"-41.0267" }}</span>
+      </div>
+      <div class="mapa-base mono">{{ embarcacao.base|default:"Porto do Açu · RJ" }}</div>
+    </div>
+  </section>
+
+  <section class="painel painel-diario">
+    <header class="painel-titulo">
+      <span>Diário de bordo</span>
+      <a class="painel-titulo-acao" href="#">ver tudo →</a>
+    </header>
+    <ul class="diario">
+      {% for a in recentes %}
+        <li>
+          <span class="diario-hora mono">{{ a.criado_em|date:"H:i" }}</span>
+          <span class="diario-linha {{ a.tipo_evento|default:'' }}"></span>
+          <div class="diario-conteudo">
+            <strong>{{ a.demanda.titulo }}</strong>
+            <small>{{ a.autor|nome }} · {{ a.get_status_novo_display|default:a.texto|truncatechars:50 }}</small>
+          </div>
+        </li>
+      {% empty %}
+        <li class="tabela-vazio">Sem eventos.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+</div>
+
+<!-- ============================================
+     SCRIPT: ALERTAS DINÂMICOS NO BARCO
+     ============================================ -->
+<script>
+  // =========================================================
+  // MAPA DE COORDENADAS (relativas à IMAGEM do barco)
+  // 0% = topo/esquerda da imagem · 100% = base/direita
+  // =========================================================
+  const LOCAIS_BARCO = {
+    "proa":      { top: "50%", left: "8%"  },
+    "casco":     { top: "82%", left: "45%" },
+    "cabine":    { top: "48%", left: "50%" },
+    "mastro":    { top: "15%", left: "42%" },
+    "antena":    { top: "2%",  left: "46%" },
+    "motor":     { top: "72%", left: "78%" },
+    "helice":    { top: "88%", left: "95%" },
+    "bateria":   { top: "68%", left: "68%" },
+    "starlink":  { top: "5%",  left: "45%" },
+    "leme":      { top: "78%", left: "90%" },
+    // 🔧 novo local: inversor (parte interna, atrás da cabine)
+    "inversor":  { top: "58%", left: "62%" },
+  };
+
+  // =========================================================
+  // 🔴 MODO TESTE — 2 problemas: proa + inversor
+  //
+  // Em produção, troque o bloco abaixo pela linha:
+  //   const problemasAtuais = {{ problemas_barco|default:"[]"|safe }};
+  // =========================================================
+  const problemasAtuais = [
+    {
+      local: "proa",
+      titulo: "Defeito na proa",
+      codigo: "L42-07",
+      prioridade: "Alta",
+      bloqueante: false
+    },
+    {
+      local: "inversor",
+      titulo: "Defeito no inversor",
+      codigo: "L42-11",
+      prioridade: "Crítica",
+      bloqueante: true
+    },
+  ];
+
+  // =========================================================
+  // RENDERIZA OS PONTOS DENTRO DO WRAPPER DA IMAGEM
+
+  document.addEventListener('DOMContentLoaded', renderizarAlertasBarco);
+</script>
+
+{% endblock %}

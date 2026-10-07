@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% load op %}
+
+{% block titulo %}Manutenção{% endblock %}
+
+{% block conteudo %}
+
+<div class="cabecalho">
+  <div>
+    <div class="suave">USV Umi Polaris L42 · Equipamento</div>
+    <h1>Manutenção</h1>
+    <p class="descricao">
+      Controle de manutenções, defeitos, inspeções e pendências técnicas do L42.
+    </p>
+  </div>
+
+  {% if pode_editar %}
+  <div class="acoes">
+    <a class="btn" href="{% url 'demanda_nova' %}?tipo=MANUTENCAO">
+      + Nova manutenção
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+
+<!-- RESUMO -->
+
+<div class="grid g4 secao">
+
+  <div class="card">
+    <div class="suave">Total</div>
+    <h2>{{ total }}</h2>
+    <div class="pequeno">Registros de manutenção</div>
+  </div>
+
+  <div class="card">
+    <div class="suave">Em aberto</div>
+    <h2>{{ abertas }}</h2>
+    <div class="pequeno">Pendentes ou em andamento</div>
+  </div>
+
+  <div class="card">
+    <div class="suave">Bloqueantes</div>
+    <h2>{{ bloqueantes }}</h2>
+    <div class="pequeno">Impedem a operação</div>
+  </div>
+
+  <div class="card">
+    <div class="suave">Concluídas</div>
+    <h2>{{ concluidas }}</h2>
+    <div class="pequeno">Manutenções finalizadas</div>
+  </div>
+
+</div>
+
+
+<!-- MANUTENÇÕES -->
+
+<div class="secao">
+
+  <div class="cabecalho">
+    <div>
+      <h2>Manutenções registradas</h2>
+      <div class="suave">
+        Histórico e pendências técnicas do L42
+      </div>
+    </div>
+
+    <a class="btn sec" href="{% url 'demanda_lista' %}?tipo=MANUTENCAO">
+      Ver lista completa
+    </a>
+  </div>
+
+
+  <div class="card tabela-wrap">
+
+    <table class="tabela">
+
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Manutenção</th>
+          <th>Sistema</th>
+          <th>Prioridade</th>
+          <th>Status</th>
+          <th>Responsável</th>
+          <th>Prazo</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for manutencao in manutencoes %}
+
+        <tr>
+
+          <td>
+            <a href="{% url 'demanda_detalhe' manutencao.pk %}">
+              <b>{{ manutencao.codigo }}</b>
+            </a>
+          </td>
+
+          <td>
+            <div>
+              <a href="{% url 'demanda_detalhe' manutencao.pk %}">
+                {{ manutencao.titulo }}
+              </a>
+            </div>
+
+            {% if manutencao.bloqueia_operacao and manutencao.aberta %}
+              <div class="pequeno atrasada">
+                ⚠ Impede o L42 de operar
+              </div>
+            {% endif %}
+
+            {% if manutencao.item_faltante %}
+              <div class="pequeno suave">
+                Item: {{ manutencao.item_faltante }}
+                {% if manutencao.quantidade %}
+                  · {{ manutencao.quantidade }} un.
+                {% endif %}
+              </div>
+            {% endif %}
+          </td>
+
+          <td>
+            {{ manutencao.sistema.nome }}
+          </td>
+
+          <td>
+            <span class="badge p-{{ manutencao.prioridade }}">
+              {{ manutencao.get_prioridade_display }}
+            </span>
+          </td>
+
+          <td>
+            <span class="badge s-{{ manutencao.status }}">
+              {{ manutencao.get_status_display }}
+            </span>
+          </td>
+
+          <td>
+            {{ manutencao.responsavel|nome }}
+          </td>
+
+          <td>
+            {% if manutencao.prazo %}
+              <span {% if manutencao.atrasada %}class="atrasada"{% endif %}>
+                {{ manutencao.prazo|date:"d/m/Y" }}
+              </span>
+
+              {% if manutencao.atrasada %}
+                <div class="pequeno atrasada">Atrasada</div>
+              {% endif %}
+
+            {% else %}
+              <span class="suave">Sem prazo</span>
+            {% endif %}
+          </td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr>
+          <td colspan="7" class="suave">
+            Nenhuma manutenção registrada.
+          </td>
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+
+<!-- LEGENDA -->
+
+<div class="grid g2 secao">
+
+  <section>
+    <h2>Tipos de registro</h2>
+
+    <div class="card">
+
+      <div class="meta">
+
+        <div>
+          <dt>Manutenção</dt>
+          <dd>Serviço ou intervenção técnica.</dd>
+        </div>
+
+        <div>
+          <dt>Defeito</dt>
+          <dd>Falha identificada em um sistema ou equipamento.</dd>
+        </div>
+
+        <div>
+          <dt>Inspeção / teste</dt>
+          <dd>Verificação ou teste operacional.</dd>
+        </div>
+
+        <div>
+          <dt>Melhoria</dt>
+          <dd>Alteração ou aprimoramento do sistema.</dd>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+
+  <section>
+    <h2>Operação</h2>
+
+    <div class="card">
+
+      {% if bloqueantes %}
+        <div class="alerta">
+          <b>{{ bloqueantes }} manutenção(ões) bloqueante(s).</b>
+          O L42 possui pendência que pode impedir sua operação.
+        </div>
+      {% else %}
+        <div class="faltante">
+          <b>Nenhuma manutenção bloqueante.</b>
+          Não há manutenção registrada que impeça a operação.
+        </div>
+      {% endif %}
+
+    </div>
+
+  </section>
+
+</div>
+
+{% endblock %}

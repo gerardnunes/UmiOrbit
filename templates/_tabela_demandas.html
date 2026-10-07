@@ -1,0 +1,8 @@
+<div class="tabela-wrap">
+{% if itens %}
+<table>
+  <thead><tr><th>Demanda</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th>Prazo</th></tr></thead>
+  <tbody>{% for d in itens %}{% include "_linha_demanda.html" %}{% endfor %}</tbody>
+</table>
+{% else %}<p class="vazio">{{ vazio }}</p>{% endif %}
+</div>

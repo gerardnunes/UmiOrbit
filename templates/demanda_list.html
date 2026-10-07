@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load op %}
+{% block titulo %}Demandas{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <h1>Demandas e faltantes</h1>
+  {% if pode_editar %}
+  <div class="acoes">
+    <a class="btn" href="{% url 'demanda_nova' %}">Nova demanda</a>
+    <a class="btn sec" href="{% url 'demanda_nova' %}?tipo=FALTANTE">Registrar item faltante</a>
+  </div>
+  {% endif %}
+</div>
+
+<form method="get" class="card filtros">
+  {% for f in filtro %}
+    {% if f.name == "atrasadas" %}
+      <div class="campo check" style="margin:0"><label>{{ f }} {{ f.label }}</label></div>
+    {% else %}
+      <div>{{ f.label_tag }}{{ f }}</div>
+    {% endif %}
+  {% endfor %}
+  <div class="acoes"><button class="btn" type="submit">Filtrar</button><a class="btn sec" href="{% url 'demanda_lista' %}">Limpar</a></div>
+</form>
+
+<p class="suave pequeno">{{ page_obj.paginator.count }} demanda{{ page_obj.paginator.count|pluralize }} encontrada{{ page_obj.paginator.count|pluralize }}.</p>
+{% include "_tabela_demandas.html" with itens=demandas vazio="Nenhuma demanda com esses filtros." %}
+
+{% if is_paginated %}
+<nav class="paginacao" aria-label="Páginas">
+  {% if page_obj.has_previous %}<a href="?{% pagina page_obj.previous_page_number %}">Anterior</a>{% endif %}
+  <span class="suave">Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+  {% if page_obj.has_next %}<a href="?{% pagina page_obj.next_page_number %}">Próxima</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

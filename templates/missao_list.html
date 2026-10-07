@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block titulo %}Missões{% endblock %}
+
+{% block conteudo %}
+
+<div class="cabecalho">
+    <div>
+        <div class="suave">OPERAÇÃO</div>
+        <h1>Missões</h1>
+        <p class="suave">
+            Controle operacional das missões do Umi Polaris L42.
+        </p>
+    </div>
+
+    <div class="acoes">
+        <a href="{% url 'missao_nova' %}" class="btn">
+            + Nova missão
+        </a>
+    </div>
+</div>
+
+
+{% if missao_atual %}
+
+<section class="card secao">
+
+    <div class="cabecalho">
+        <div>
+            <div class="suave">
+                MISSÃO #{{ missao_atual.pk }}
+            </div>
+
+            <h2>{{ missao_atual.titulo }}</h2>
+        </div>
+
+        <div>
+            <span class="badge">
+                {{ missao_atual.get_status_display }}
+            </span>
+        </div>
+    </div>
+
+
+    <div class="grid g3">
+
+        <div>
+            <div class="suave pequeno">LOCAL</div>
+            <strong>
+                {% if missao_atual.local %}
+                    {{ missao_atual.local }}
+                {% else %}
+                    Não informado
+                {% endif %}
+            </strong>
+        </div>
+
+        <div>
+            <div class="suave pequeno">RESPONSÁVEL</div>
+            <strong>
+                {% if missao_atual.responsavel %}
+                    {{ missao_atual.responsavel.get_full_name|default:missao_atual.responsavel.username }}
+                {% else %}
+                    Não definido
+                {% endif %}
+            </strong>
+        </div>
+
+        <div>
+            <div class="suave pequeno">CHECKLIST</div>
+            <strong>
+                {{ missao_atual.checklist_concluido }}
+                /
+                {{ missao_atual.checklist_total }}
+
+                {% if missao_atual.checklist_total %}
+                    · {{ missao_atual.checklist_percentual }}%
+                {% endif %}
+            </strong>
+        </div>
+
+    </div>
+
+
+    {% if missao_atual.objetivo %}
+
+    <div class="secao">
+
+        <div class="suave pequeno">
+            OBJETIVO
+        </div>
+
+        <p class="descricao">
+            {{ missao_atual.objetivo }}
+        </p>
+
+    </div>
+
+    {% endif %}
+
+
+    <div class="secao">
+
+        <h3>Checklist</h3>
+
+        <div class="lista-checklist">
+
+            {% for item in missao_atual.checklist.all %}
+
+                <div class="item-checklist">
+
+                    {% if item.concluido %}
+                        <span class="check-ok">✓</span>
+                    {% else %}
+                        <span class="check-pendente">○</span>
+                    {% endif %}
+
+                    <span>
+                        {{ item.item }}
+                    </span>
+
+                </div>
+
+            {% empty %}
+
+                <div class="suave">
+                    Nenhum item de checklist cadastrado.
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+</section>
+
+
+{% else %}
+
+<section class="card missao-descanso">
+
+    <div class="missao-descanso-status">
+        L42
+    </div>
+
+    <h2>EM DESCANSO</h2>
+
+    <p>
+        Nenhuma missão ativa no momento.
+    </p>
+
+    <a href="{% url 'missao_nova' %}" class="btn">
+        Criar missão
+    </a>
+
+</section>
+
+{% endif %}
+
+
+<section class="secao">
+
+    <div class="cabecalho">
+        <div>
+            <h2>Histórico de missões</h2>
+            <p class="suave">
+                Missões anteriores e futuras.
+            </p>
+        </div>
+    </div>
+
+
+    <div class="card">
+
+        {% for missao in missoes %}
+
+            <div class="linha-lista">
+
+                <div>
+                    <strong>
+                        #{{ missao.pk }} · {{ missao.titulo }}
+                    </strong>
+
+                    <div class="pequeno suave">
+
+                        {% if missao.local %}
+                            {{ missao.local }}
+                        {% endif %}
+
+                        {% if missao.criado_em %}
+                            · {{ missao.criado_em|date:"d/m/Y H:i" }}
+                        {% endif %}
+
+                    </div>
+                </div>
+
+                <div>
+
+                    <span class="badge">
+                        {{ missao.get_status_display }}
+                    </span>
+
+                </div>
+
+            </div>
+
+        {% empty %}
+
+            <div class="suave">
+                Nenhuma missão cadastrada.
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
+{% endblock %}

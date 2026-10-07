@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load op %}
+{% block titulo %}Equipe{% endblock %}
+{% block conteudo %}
+<h1>Equipe</h1>
+<section class="secao">
+  <h2>Trabalhadores</h2>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Nome</th><th>Função</th><th>Contato</th><th>Em aberto</th><th>Concluídas</th></tr></thead>
+    <tbody>
+    {% for u in trabalhadores %}
+      <tr><td><b>{{ u|nome }}</b></td><td>{{ u.perfil.cargo|default:"—" }}</td><td>{{ u.perfil.telefone|default:"—" }}</td>
+      <td><a href="{% url 'demanda_lista' %}?responsavel={{ u.pk }}">{{ u.n_abertas }}</a></td><td>{{ u.n_feitas }}</td></tr>
+    {% empty %}<tr><td colspan="5" class="vazio">Nenhum trabalhador.</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+<section class="secao">
+  <h2>Diretoria</h2>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Nome</th><th>Função</th><th>Contato</th></tr></thead>
+    <tbody>
+    {% for u in diretores %}<tr><td><b>{{ u|nome }}</b></td><td>{{ u.perfil.cargo|default:"—" }}</td><td>{{ u.perfil.telefone|default:"—" }}</td></tr>
+    {% empty %}<tr><td colspan="3" class="vazio">Nenhum diretor.</td></tr>{% endfor %}
+    </tbody></table></div>
+</section>
+{% endblock %}
