@@ -126,6 +126,7 @@ p {
 
 .bridge-conteudo {
   width: 100%;
+  min-width: 0;
   padding: 18px 20px 40px;
 }
 
@@ -699,6 +700,10 @@ a.painel-titulo-acao:hover {
   gap: 12px;
 }
 
+.console > * {
+  min-width: 0;
+}
+
 .console-barco {
   grid-column: span 2;
 }
@@ -1068,11 +1073,19 @@ a.painel-titulo-acao:hover {
    ============================================================ */
 
 .tabela-wrap {
+  min-width: 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 
   background: var(--painel);
   border: 1px solid var(--linha);
   border-radius: var(--raio-g);
+}
+
+.painel-tabela-wrap {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .tabela {
@@ -1080,6 +1093,36 @@ a.painel-titulo-acao:hover {
   border-collapse: collapse;
 
   font-size: .8rem;
+}
+
+.tabela-wrap table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: .8rem;
+}
+
+.tabela-wrap th,
+.tabela-wrap td {
+  padding: 8px;
+  color: var(--texto-2);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--linha-2);
+}
+
+.tabela-wrap th {
+  color: var(--suave);
+  font-family: var(--mono);
+  font-size: .6rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  border-bottom-color: var(--linha);
+}
+
+.tabela-wrap tr:last-child td {
+  border-bottom: 0;
 }
 
 .tabela th,
@@ -1474,6 +1517,15 @@ a.painel-titulo-acao:hover {
   letter-spacing: -.03em;
 }
 
+.login-barco {
+  display: block;
+  width: 100%;
+  height: 112px;
+  margin: 0 auto 8px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, .55));
+}
+
 .login > p {
   margin: 0 0 24px;
 
@@ -1648,6 +1700,17 @@ textarea:focus {
 .btn.sec:hover {
   color: var(--ciano);
   background: rgba(79, 195, 217, .08);
+}
+
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.filtros > .acoes {
+  grid-column: 1 / -1;
 }
 
 .acoes {
@@ -2149,20 +2212,15 @@ textarea:focus {
 
   .rail {
     position: relative;
-
     width: 100%;
     height: auto;
-
     flex-direction: row;
-
-    overflow-x: auto;
-
-    padding: 10px;
-
-    gap: 10px;
+    flex-wrap: wrap;
+    overflow: visible;
+    padding: 8px 12px;
+    gap: 8px 12px;
   }
 
-  .rail-nav,
   .rail-rodape {
     display: none;
   }
@@ -2174,6 +2232,39 @@ textarea:focus {
 
   .rail-embarcacao {
     margin: 0;
+  }
+
+  .rail-nav {
+    order: 3;
+    display: grid;
+    flex: 1 0 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding-top: 4px;
+  }
+
+  .rail-grupo {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .rail-grupo-titulo {
+    display: block;
+    padding: 2px 8px 4px;
+  }
+
+  .rail-nav a {
+    min-height: 42px;
+    padding: 8px 10px;
+    overflow-wrap: anywhere;
+    border-left-width: 0;
+    border-radius: var(--raio);
+  }
+
+  .rail-nav a.ativo {
+    box-shadow: inset 3px 0 var(--ciano);
   }
 
   .g3,
@@ -2192,6 +2283,23 @@ textarea:focus {
     padding: 14px 12px 30px;
   }
 
+  .faixa {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px 10px;
+    padding: 8px 12px;
+  }
+
+  .faixa-esq {
+    flex: 1 1 auto;
+    gap: 8px;
+  }
+
+  .faixa-dir {
+    gap: 10px;
+    margin-left: auto;
+  }
+
   .console {
     grid-template-columns: 1fr;
   }
@@ -2204,10 +2312,6 @@ textarea:focus {
 
   .instrumentos {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .faixa {
-    padding: 8px 12px;
   }
 
   .faixa-esq .faixa-info {
@@ -2230,7 +2334,13 @@ textarea:focus {
   }
 
   .barco-cena {
-    height: 200px;
+    height: 220px;
+  }
+
+  .barco-img-wrap img {
+    width: 78vw;
+    max-width: 520px;
+    max-height: 42vh;
   }
 
   .g4 {
@@ -2244,6 +2354,25 @@ textarea:focus {
   .login {
     padding: 26px 22px;
   }
+
+  .cabecalho {
+    width: 100%;
+  }
+
+  .acoes {
+    width: 100%;
+  }
+
+  .acoes .btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .linha-lista {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 
@@ -2253,7 +2382,15 @@ textarea:focus {
 
 @media (max-width: 480px) {
   .instrumentos {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .instrumento {
+    padding: 10px;
+  }
+
+  .instrumento-valor {
+    font-size: 1.25rem;
   }
 
   .g4 {
@@ -2262,9 +2399,45 @@ textarea:focus {
 
   .login {
     max-width: none;
+    padding: 24px 20px;
   }
 
-  .rail-marca-texto {
-    display: none;
+  .rail-embarcacao {
+    margin-left: auto;
+  }
+
+  .barco-cena {
+    height: 200px;
+  }
+
+  .barco-img-wrap img {
+    width: 82vw;
+    max-width: 520px;
+    max-height: 38vh;
+  }
+
+  .card,
+  .painel {
+    padding: 12px;
+  }
+
+  .paginacao {
+    flex-wrap: wrap;
+    gap: .6rem;
+  }
+
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  .btn {
+    min-height: 42px;
+    padding: .65rem .85rem;
   }
 }

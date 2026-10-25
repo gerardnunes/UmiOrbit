@@ -1,220 +1,422 @@
 {% extends "base.html" %}
-
 {% block titulo %}Missões{% endblock %}
 
 {% block conteudo %}
 
-<div class="cabecalho">
-    <div>
-        <div class="suave">OPERAÇÃO</div>
-        <h1>Missões</h1>
-        <p class="suave">
-            Controle operacional das missões do Umi Polaris L42.
-        </p>
+<div class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Operação · missões</div>
+    <h1>Missões</h1>
+    <div class="pagina-meta">
+      <span>{{ missoes|length }} missão{% if missoes|length != 1 %}s{% endif %} registrada{% if missoes|length != 1 %}s{% endif %}</span>
+      {% if missao_atual %}
+        <span class="pill-missao ativa">Em curso: {{ missao_atual.titulo }}</span>
+      {% else %}
+        <span class="pill-missao parada">Sem missão ativa</span>
+      {% endif %}
     </div>
-
-    <div class="acoes">
-        <a href="{% url 'missao_nova' %}" class="btn">
-            + Nova missão
-        </a>
-    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <a href="{% url 'missao_nova' %}" class="btn">+ Nova missão</a>
+  </div>
 </div>
 
+<div class="console console-missoes">
 
-{% if missao_atual %}
-
-<section class="card secao">
-
-    <div class="cabecalho">
+  <!-- ============================================
+       MISSÃO ATUAL
+       ============================================ -->
+  {% if missao_atual %}
+    <section class="missao-destaque">
+      <header class="missao-destaque-topo">
         <div>
-            <div class="suave">
-                MISSÃO #{{ missao_atual.pk }}
-            </div>
-
-            <h2>{{ missao_atual.titulo }}</h2>
-        </div>
-
-        <div>
-            <span class="badge">
-                {{ missao_atual.get_status_display }}
+          <div class="missao-kicker">Missão #{{ missao_atual.pk }}</div>
+          <h2>{{ missao_atual.titulo }}</h2>
+          <div class="missao-meta">
+            <span class="status-pill status-{{ missao_atual.status|lower }}">
+              {{ missao_atual.get_status_display }}
             </span>
-        </div>
-    </div>
-
-
-    <div class="grid g3">
-
-        <div>
-            <div class="suave pequeno">LOCAL</div>
-            <strong>
-                {% if missao_atual.local %}
-                    {{ missao_atual.local }}
-                {% else %}
-                    Não informado
-                {% endif %}
-            </strong>
+            {% if missao_atual.local %}
+              <span>{{ missao_atual.local }}</span>
+            {% endif %}
+            {% if missao_atual.responsavel %}
+              <span>{{ missao_atual.responsavel.get_full_name|default:missao_atual.responsavel.username }}</span>
+            {% endif %}
+            {% if missao_atual.inicio_previsto %}
+              <span>{{ missao_atual.inicio_previsto|date:"d/m/Y H:i" }}</span>
+            {% endif %}
+          </div>
         </div>
 
-        <div>
-            <div class="suave pequeno">RESPONSÁVEL</div>
-            <strong>
-                {% if missao_atual.responsavel %}
-                    {{ missao_atual.responsavel.get_full_name|default:missao_atual.responsavel.username }}
-                {% else %}
-                    Não definido
-                {% endif %}
-            </strong>
+        <div class="missao-destaque-progresso">
+          <div class="progresso-num">
+            {{ missao_atual.progresso_geral }}<small>%</small>
+          </div>
+          <div class="progresso-label">
+            {{ missao_atual.itens_feitos }}/{{ missao_atual.total_itens }} itens
+          </div>
+        </div>
+      </header>
+
+      {% if missao_atual.objetivo %}
+        <div class="missao-objetivo">
+          <div class="missao-kicker">Objetivo</div>
+          <p>{{ missao_atual.objetivo|linebreaksbr }}</p>
+        </div>
+      {% endif %}
+
+      <div class="missao-barra">
+        <span style="width: {{ missao_atual.progresso_geral }}%"></span>
+      </div>
+
+      <div class="missao-checklists">
+        <div class="missao-checklists-titulo">
+          Checklists desta missão ({{ missao_atual.checklists.count }})
         </div>
 
-        <div>
-            <div class="suave pequeno">CHECKLIST</div>
-            <strong>
-                {{ missao_atual.checklist_concluido }}
-                /
-                {{ missao_atual.checklist_total }}
-
-                {% if missao_atual.checklist_total %}
-                    · {{ missao_atual.checklist_percentual }}%
-                {% endif %}
-            </strong>
-        </div>
-
-    </div>
-
-
-    {% if missao_atual.objetivo %}
-
-    <div class="secao">
-
-        <div class="suave pequeno">
-            OBJETIVO
-        </div>
-
-        <p class="descricao">
-            {{ missao_atual.objetivo }}
-        </p>
-
-    </div>
-
-    {% endif %}
-
-
-    <div class="secao">
-
-        <h3>Checklist</h3>
-
-        <div class="lista-checklist">
-
-            {% for item in missao_atual.checklist.all %}
-
-                <div class="item-checklist">
-
-                    {% if item.concluido %}
-                        <span class="check-ok">✓</span>
-                    {% else %}
-                        <span class="check-pendente">○</span>
-                    {% endif %}
-
-                    <span>
-                        {{ item.item }}
-                    </span>
-
-                </div>
-
-            {% empty %}
-
-                <div class="suave">
-                    Nenhum item de checklist cadastrado.
-                </div>
-
-            {% endfor %}
-
-        </div>
-
-    </div>
-
-</section>
-
-
-{% else %}
-
-<section class="card missao-descanso">
-
-    <div class="missao-descanso-status">
-        L42
-    </div>
-
-    <h2>EM DESCANSO</h2>
-
-    <p>
-        Nenhuma missão ativa no momento.
-    </p>
-
-    <a href="{% url 'missao_nova' %}" class="btn">
-        Criar missão
-    </a>
-
-</section>
-
-{% endif %}
-
-
-<section class="secao">
-
-    <div class="cabecalho">
-        <div>
-            <h2>Histórico de missões</h2>
-            <p class="suave">
-                Missões anteriores e futuras.
-            </p>
-        </div>
-    </div>
-
-
-    <div class="card">
-
-        {% for missao in missoes %}
-
-            <div class="linha-lista">
-
-                <div>
-                    <strong>
-                        #{{ missao.pk }} · {{ missao.titulo }}
-                    </strong>
-
-                    <div class="pequeno suave">
-
-                        {% if missao.local %}
-                            {{ missao.local }}
-                        {% endif %}
-
-                        {% if missao.criado_em %}
-                            · {{ missao.criado_em|date:"d/m/Y H:i" }}
-                        {% endif %}
-
-                    </div>
-                </div>
-
-                <div>
-
-                    <span class="badge">
-                        {{ missao.get_status_display }}
-                    </span>
-
-                </div>
-
+        {% for c in missao_atual.checklists.all %}
+          <a href="{{ c.get_absolute_url }}" class="checklist-linha">
+            <div class="checklist-linha-info">
+              <strong>{{ c.titulo }}</strong>
+              <div class="checklist-linha-meta">
+                <span class="status-pill status-{{ c.status|lower }}">{{ c.get_status_display }}</span>
+                <span>{{ c.feitos }}/{{ c.total }} itens</span>
+              </div>
             </div>
-
+            <div class="checklist-linha-progresso">
+              <div class="checklist-linha-barra">
+                <span style="width: {{ c.pct }}%"></span>
+              </div>
+              <span class="checklist-linha-pct">{{ c.pct }}%</span>
+            </div>
+          </a>
         {% empty %}
-
-            <div class="suave">
-                Nenhuma missão cadastrada.
-            </div>
-
+          <div class="vazio-suave">
+            Nenhum checklist vinculado a esta missão ainda.
+            <a href="{% url 'checklist_novo' %}">Criar checklist</a>
+          </div>
         {% endfor %}
+      </div>
 
+      {% if missao_atual.observacoes %}
+        <div class="missao-observacoes">
+          <div class="missao-kicker">Observações</div>
+          <p>{{ missao_atual.observacoes|linebreaksbr }}</p>
+        </div>
+      {% endif %}
+    </section>
+
+  {% else %}
+    <!-- ============================================
+         SEM MISSÃO ATIVA
+         ============================================ -->
+    <section class="missao-descanso">
+      <h2>Nenhuma missão ativa</h2>
+      <p>Não há missão em preparação ou em operação no momento.</p>
+      <a href="{% url 'missao_nova' %}" class="btn">Criar missão</a>
+    </section>
+  {% endif %}
+
+  <!-- ============================================
+       HISTÓRICO
+       ============================================ -->
+  <section class="painel painel-historico">
+    <header class="painel-titulo">
+      <span>Histórico de missões</span>
+      <span class="painel-titulo-acao">{{ missoes|length }}</span>
+    </header>
+
+    <div class="tabela-wrap painel-tabela-wrap">
+      <table class="tabela tabela-missoes">
+        <thead>
+          <tr>
+            <th class="mono" style="width:60px;">#</th>
+            <th>Missão</th>
+            <th style="width:200px;">Local</th>
+            <th style="width:130px;">Status</th>
+            <th style="width:170px;">Criada</th>
+            <th style="width:80px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in missoes %}
+            <tr>
+              <td class="mono">#{{ m.pk }}</td>
+              <td>
+                <strong>{{ m.titulo }}</strong>
+                {% if m.objetivo %}
+                  <div class="truncar-suave">{{ m.objetivo|truncatechars:80 }}</div>
+                {% endif %}
+              </td>
+              <td>{{ m.local|default:"—" }}</td>
+              <td>
+                <span class="status-pill status-{{ m.status|lower }}">
+                  {{ m.get_status_display }}
+                </span>
+              </td>
+              <td class="mono suave">{{ m.criado_em|date:"d/m/Y H:i" }}</td>
+              <td>
+                <td>
+  <a class="btn btn-mini" href="{% url 'missao_detalhe' m.pk %}">Ver</a>
+</td>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="tabela-vazio">
+                Nenhuma missão cadastrada ainda.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </section>
 
-</section>
+</div>
+
+<!-- ============================================
+     CSS
+     ============================================ -->
+<style>
+.console-missoes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* ---- Missão em destaque ---- */
+.missao-destaque {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 14px;
+}
+.missao-destaque-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.missao-kicker {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.missao-destaque h2 {
+  margin: 0 0 10px;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.missao-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: .85rem;
+  color: var(--texto-suave, #aab);
+  align-items: center;
+}
+.missao-destaque-progresso {
+  text-align: right;
+  flex-shrink: 0;
+}
+.progresso-num {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--texto, #e6edf3);
+  line-height: 1;
+}
+.progresso-num small {
+  font-size: .85rem;
+  font-weight: 400;
+  color: var(--texto-suave, #aab);
+}
+.progresso-label {
+  font-size: .78rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 6px;
+}
+
+.missao-barra {
+  height: 6px;
+  background: rgba(255,255,255,.08);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.missao-barra span {
+  display: block;
+  height: 100%;
+  background: #64748b;
+}
+
+.missao-objetivo,
+.missao-observacoes {
+  background: rgba(0,0,0,.15);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.missao-objetivo p,
+.missao-observacoes p {
+  margin: 4px 0 0;
+  color: var(--texto, #e6edf3);
+  line-height: 1.45;
+}
+
+/* ---- Checklists dentro da missão ---- */
+.missao-checklists {
+  display: grid;
+  gap: 8px;
+}
+.missao-checklists-titulo {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.checklist-linha {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+.checklist-linha:hover {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.12);
+}
+.checklist-linha-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: .78rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 4px;
+}
+.checklist-linha-progresso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+.checklist-linha-barra {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.checklist-linha-barra span {
+  display: block;
+  height: 100%;
+  background: #64748b;
+}
+.checklist-linha-pct {
+  font-size: .8rem;
+  color: var(--texto-suave, #aab);
+  min-width: 38px;
+  text-align: right;
+}
+
+/* ---- Sem missão ativa ---- */
+.missao-descanso {
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(255,255,255,.02);
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: 10px;
+}
+.missao-descanso h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.missao-descanso p {
+  color: var(--texto-suave, #aab);
+  margin: 0 0 18px;
+  font-size: .9rem;
+}
+
+/* ---- Status pills (sóbrias) ---- */
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .72rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+  color: var(--texto-suave, #aab);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.status-pill.status-preparacao  { color: #d4a24c; border-color: rgba(212,162,76,.3); }
+.status-pill.status-em_operacao { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.status-pill.status-pausada     { color: #94a3b8; }
+.status-pill.status-finalizada  { color: #7f9dbf; border-color: rgba(127,157,191,.3); }
+.status-pill.status-cancelada   { color: #c47a7a; border-color: rgba(196,122,122,.3); }
+
+/* ---- Pill do cabeçalho ---- */
+.pill-missao {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .78rem;
+  background: rgba(255,255,255,.06);
+  color: var(--texto-suave, #aab);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.pill-missao.ativa  { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.pill-missao.parada { color: #94a3b8; }
+
+/* ---- Vazio ---- */
+.vazio-suave {
+  color: var(--texto-suave, #aab);
+  font-size: .85rem;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.02);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.04);
+}
+.vazio-suave a {
+  color: var(--texto, #e6edf3);
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,.25);
+  text-underline-offset: 3px;
+}
+.vazio-suave a:hover {
+  text-decoration-color: rgba(255,255,255,.6);
+}
+
+/* ---- Tabela histórico ---- */
+.tabela-missoes td { vertical-align: middle; }
+.truncar-suave {
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 2px;
+}
+.suave { color: #64748b; }
+.btn-mini { padding: 5px 10px; font-size: .78rem; }
+
+/* ---- Responsivo ---- */
+@media (max-width: 720px) {
+  .missao-destaque-topo { flex-direction: column; }
+  .missao-destaque-progresso { text-align: left; }
+  .checklist-linha {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .checklist-linha-progresso { min-width: 0; }
+}
+</style>
 
 {% endblock %}

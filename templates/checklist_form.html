@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}{% if form.instance.pk %}Editar checklist{% else %}Novo checklist{% endif %}{% endblock %}
+
+{% block conteudo %}
+
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Checklists · {{ form.instance.pk|yesno:"edição,criação" }}</div>
+    <h1>{% if form.instance.pk %}Editar checklist{% else %}Novo checklist{% endif %}</h1>
+    <div class="pagina-meta">
+      <span>Depois de salvar, você poderá importar a planilha Excel.</span>
+    </div>
+  </div>
+</section>
+
+<div class="console">
+  <section class="painel" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Dados do checklist</span>
+      <span class="painel-titulo-acao">FORM</span>
+    </header>
+
+    <form method="post" class="formulario" style="padding:1.25rem;display:grid;gap:1rem;">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="prontidao-alerta">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="campo">
+        <label for="{{ form.titulo.id_for_label }}">Título *</label>
+        {{ form.titulo }}
+        {% if form.titulo.errors %}<small class="erro">{{ form.titulo.errors.0 }}</small>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.descricao.id_for_label }}">Descrição</label>
+        {{ form.descricao }}
+        {% if form.descricao.errors %}<small class="erro">{{ form.descricao.errors.0 }}</small>{% endif %}
+      </div>
+
+      <div class="campo-grupo" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div class="campo">
+          <label for="{{ form.missao.id_for_label }}">Missão</label>
+          {{ form.missao }}
+          {% if form.missao.errors %}<small class="erro">{{ form.missao.errors.0 }}</small>{% endif %}
+        </div>
+        <div class="campo">
+          <label for="{{ form.status.id_for_label }}">Status</label>
+          {{ form.status }}
+          {% if form.status.errors %}<small class="erro">{{ form.status.errors.0 }}</small>{% endif %}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+        <a class="btn" href="{% url 'checklist_lista' %}">Cancelar</a>
+        <button type="submit" class="btn btn-primario">
+          {% if form.instance.pk %}Salvar alterações{% else %}Criar checklist{% endif %}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+{% endblock %}

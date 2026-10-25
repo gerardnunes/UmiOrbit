@@ -1,0 +1,607 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}{{ checklist.titulo }}{% endblock %}
+
+{% block conteudo %}
+
+<!-- ============================================
+     CABEÇALHO
+     ============================================ -->
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Checklist · {{ checklist.get_status_display }}</div>
+    <h1>{{ checklist.titulo }}</h1>
+    <div class="pagina-meta">
+      <span>{{ checklist.pct }}% concluído · {{ checklist.feitos }}/{{ checklist.total }} itens</span>
+      {% if checklist.missao %}<span>Missão: {{ checklist.missao }}</span>{% endif %}
+      {% if checklist.exige_login_auditoria %}
+        <span class="pill-auditoria fechado">🔒 Auditoria exige login</span>
+      {% else %}
+        <span class="pill-auditoria aberto">🌐 Auditoria livre</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <button type="button" class="btn" onclick="copiarLinkAuditoria()">
+      🔗 Copiar link
+    </button>
+
+    <a class="btn btn-ok"
+       href="https://wa.me/?text={{ mensagem_whatsapp|urlencode }}"
+       target="_blank" rel="noopener">
+      📱 Enviar por WhatsApp
+    </a>
+
+    <a class="btn" href="{% url 'checklist_editar' checklist.pk %}">Editar</a>
+    <a class="btn" href="{% url 'checklist_lista' %}">← Voltar</a>
+
+    <input type="hidden" id="url-auditoria"
+           value="{{ request.scheme }}://{{ request.get_host }}{% url 'auditoria_checklist' checklist.token_auditoria %}">
+  </div>
+</section>
+
+<div class="console">
+
+  <!-- ============================================
+       IMPORTAÇÃO DE EXCEL + INSTRUÇÕES
+       ============================================ -->
+  <section class="painel painel-import" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Importar planilha Excel</span>
+      <span class="painel-titulo-acao">.XLSX</span>
+    </header>
+
+    <div class="painel-import-corpo">
+
+      <!-- Bloco de instruções -->
+      <div class="ajuda-excel">
+        <div class="ajuda-excel-topo">
+          <strong>Como a planilha precisa estar</strong>
+          <a class="btn btn-primario btn-mini" href="{% url 'checklist_modelo' %}">
+            ⬇ Baixar modelo (.xlsx)
+          </a>
+        </div>
+
+        <p class="ajuda-excel-dica">
+          A primeira linha é o <b>cabeçalho</b>; cada linha seguinte vira um item.
+          Só o <b>Título</b> é obrigatório. O parser procura o cabeçalho nas
+          <b>10 primeiras linhas</b>, então logo/título em cima não atrapalha.
+        </p>
+
+        <div class="tabela-wrap">
+          <table class="tabela tabela-mini">
+            <thead>
+              <tr>
+                <th>Coluna</th>
+                <th>Obrigatória</th>
+                <th>Exemplo</th>
+                <th>Aceita também</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">Ordem</td>
+                <td>não</td>
+                <td class="mono">1, 2, 3</td>
+                <td>N, Num, Nº, Sequência</td>
+              </tr>
+              <tr>
+                <td class="mono"><b>Título</b></td>
+                <td><span class="dot ok"></span>sim</td>
+                <td>Checar casco</td>
+                <td>Item, Tarefa, Atividade, Nome, Title</td>
+              </tr>
+              <tr>
+                <td class="mono">Descrição</td>
+                <td>não</td>
+                <td>Inspeção visual</td>
+                <td>Desc, Detalhe, Obs, Comentário</td>
+              </tr>
+              <tr>
+                <td class="mono">Sistema</td>
+                <td>não</td>
+                <td>Casco, Motor, Bateria</td>
+                <td>Sistemas, Equipamento, Área</td>
+              </tr>
+              <tr>
+                <td class="mono">Prioridade</td>
+                <td>não</td>
+                <td>Baixa / Média / Alta / Crítica</td>
+                <td>Low / Medium / High / Critical</td>
+              </tr>
+              <tr>
+                <td class="mono">Responsável</td>
+                <td>não</td>
+                <td class="mono">joao</td>
+                <td>Resp, Owner — deve ser o <b>username</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <ul class="ajuda-excel-lista">
+          <li>Salve o arquivo como <b>.xlsx</b> (Excel 2007+). O formato .xls antigo não é lido.</li>
+          <li>Só a <b>primeira aba</b> é considerada.</li>
+          <li>Linhas vazias são ignoradas.</li>
+          <li><b>Sistema</b> precisa bater com um sistema já cadastrado (ou marque a opção abaixo).</li>
+          <li><b>Responsável</b> deve ser o <b>username</b> (ex.: <span class="mono">joao</span>), não o nome completo.</li>
+        </ul>
+      </div>
+
+      <!-- Formulário de upload -->
+      <form method="post" enctype="multipart/form-data"
+            action="{% url 'checklist_importar' checklist.pk %}"
+            class="formulario formulario-import">
+        {% csrf_token %}
+
+        {% if import_form.non_field_errors %}
+          <div class="prontidao-alerta">{{ import_form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+          <label for="{{ import_form.arquivo.id_for_label }}">
+            {{ import_form.arquivo.label }}
+          </label>
+          {{ import_form.arquivo }}
+          {% if import_form.arquivo.help_text %}
+            <small>{{ import_form.arquivo.help_text }}</small>
+          {% endif %}
+          {% if import_form.arquivo.errors %}
+            <small class="erro">{{ import_form.arquivo.errors.0 }}</small>
+          {% endif %}
+        </div>
+
+        <div class="campo-check">
+          <label>
+            {{ import_form.criar_sistemas }}
+            {{ import_form.criar_sistemas.label }}
+          </label>
+        </div>
+
+        <div class="campo-check">
+          <label>
+            {{ import_form.substituir }}
+            {{ import_form.substituir.label }}
+            <small>(apaga os itens atuais antes de importar)</small>
+          </label>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button type="submit" class="btn btn-primario">Importar itens</button>
+        </div>
+      </form>
+
+      <!-- Histórico de importações -->
+      {% if importacoes %}
+        <div class="import-historico">
+          <div class="import-historico-titulo">Últimas importações</div>
+          <ul class="leitura">
+            {% for imp in importacoes %}
+              <li>
+                <span>{{ imp.enviado_em|date:"d/m/Y H:i" }}</span>
+                <b>{{ imp.linhas_criadas }}/{{ imp.linhas_lidas }} itens</b>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+    </div>
+  </section>
+
+  <!-- ============================================
+       ITENS DO CHECKLIST
+       ============================================ -->
+  <section class="painel painel-itens" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Itens do checklist</span>
+      <span class="painel-titulo-acao">{{ checklist.total }} itens · {{ checklist.pct }}%</span>
+    </header>
+
+    <div class="tabela-wrap painel-tabela-wrap">
+      <table class="tabela tabela-itens">
+        <thead>
+          <tr>
+            <th class="mono" style="width:48px;">#</th>
+            <th>Item</th>
+            <th>Sistema</th>
+            <th>Prioridade</th>
+            <th>Responsável</th>
+            <th>Status</th>
+            <th style="width:60px;text-align:center;">Fotos</th>
+            <th style="width:120px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in itens %}
+            <tr class="{% if item.concluido %}linha-ok{% endif %}">
+              <td class="mono">{{ item.ordem }}</td>
+
+              <td>
+                <strong>{{ item.titulo }}</strong>
+                {% if item.descricao %}<br><small>{{ item.descricao }}</small>{% endif %}
+                {% if item.observacao %}
+                  <div class="item-obs"><b>Obs.:</b> {{ item.observacao }}</div>
+                {% endif %}
+              </td>
+
+              <td>{{ item.sistema.nome|default:"—" }}</td>
+
+              <td>
+                <span class="dot {{ item.prioridade|lower }}"></span>
+                {{ item.get_prioridade_display }}
+              </td>
+
+              <td>{{ item.responsavel|default:"—" }}</td>
+
+              <td>
+                {% if item.concluido %}
+                  <span class="dot ok"></span>Concluído
+                  {% if item.concluido_por %}
+                    <br><small class="suave">por {{ item.concluido_por.get_full_name|default:item.concluido_por.username }}</small>
+                  {% endif %}
+                {% else %}
+                  <span class="dot atencao"></span>Pendente
+                {% endif %}
+              </td>
+
+              <!-- Contagem de fotos -->
+              <td style="text-align:center;">
+                {% with n=item.fotos.count %}
+                  {% if n %}
+                    <span class="badge-fotos" title="{{ n }} foto{{ n|pluralize }}">
+                      📷 {{ n }}
+                    </span>
+                  {% else %}
+                    <span class="suave">—</span>
+                  {% endif %}
+                {% endwith %}
+              </td>
+
+              <td>
+                <form method="post"
+                      action="{% url 'checklist_item_toggle' item.pk %}"
+                      style="display:inline;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-mini">
+                    {% if item.concluido %}Reabrir{% else %}Concluir{% endif %}
+                  </button>
+                </form>
+              </td>
+            </tr>
+
+            <!-- ============================================
+                 LINHA EXPANDIDA: FOTOS + HISTÓRICO
+                 ============================================ -->
+            {% if item.fotos.all or item.eventos.all %}
+              <tr class="linha-detalhe">
+                <td></td>
+                <td colspan="7">
+                  <div class="detalhe-grid">
+
+                    <!-- Fotos -->
+                    {% if item.fotos.all %}
+                      <div class="detalhe-bloco">
+                        <div class="detalhe-titulo">
+                          📷 Fotos ({{ item.fotos.count }})
+                        </div>
+                        <div class="fotos-admin">
+                          {% for foto in item.fotos.all %}
+                            <a href="{{ foto.imagem.url }}"
+                               target="_blank"
+                               class="foto-thumb"
+                               title="Enviada por {{ foto.enviado_por.get_full_name|default:foto.enviado_por.username|default:'anônimo' }} em {{ foto.enviado_em|date:'d/m/Y H:i' }}">
+                              <img src="{{ foto.imagem.url }}" alt="Foto do item {{ item.ordem }}">
+                              <span class="foto-legenda">
+                                {% if foto.enviado_por %}
+                                  {{ foto.enviado_por.username }}
+                                {% else %}
+                                  anônimo
+                                {% endif %}
+                                · {{ foto.enviado_em|date:"d/m H:i" }}
+                              </span>
+                            </a>
+                          {% endfor %}
+                        </div>
+                      </div>
+                    {% endif %}
+
+                    <!-- Histórico -->
+                    {% if item.eventos.all %}
+                      <div class="detalhe-bloco">
+                        <div class="detalhe-titulo">
+                          🕒 Histórico ({{ item.eventos.count }})
+                        </div>
+                        <ul class="historico">
+                          {% for ev in item.eventos.all %}
+                            <li>
+                              <span class="ev-data mono">{{ ev.criado_em|date:"d/m H:i" }}</span>
+                              <span class="ev-tipo tipo-{{ ev.tipo }}">{{ ev.get_tipo_display }}</span>
+                              {% if ev.autor %}
+                                <span class="ev-autor">{{ ev.autor.get_full_name|default:ev.autor.username }}</span>
+                              {% else %}
+                                <span class="ev-autor suave">anônimo</span>
+                              {% endif %}
+                              {% if ev.texto %}
+                                <div class="ev-texto">{{ ev.texto }}</div>
+                              {% endif %}
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    {% endif %}
+
+                  </div>
+                </td>
+              </tr>
+            {% endif %}
+
+          {% empty %}
+            <tr>
+              <td colspan="8" class="tabela-vazio">
+                Nenhum item ainda. Baixe o modelo acima, preencha e importe.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<!-- ============================================
+     SCRIPT: COPIAR LINK
+     ============================================ -->
+<script>
+function copiarLinkAuditoria() {
+  const url = document.getElementById('url-auditoria').value;
+  navigator.clipboard.writeText(url).then(
+    () => alert("Link copiado:\n\n" + url),
+    () => prompt("Copie o link manualmente:", url)
+  );
+}
+</script>
+
+<!-- ============================================
+     CSS DA PÁGINA
+     ============================================ -->
+<style>
+/* ---- Cabeçalho ---- */
+.pill-auditoria {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: .75rem;
+  margin-left: 6px;
+}
+.pill-auditoria.fechado { background: rgba(245,158,11,.15); color: #fbbf24; }
+.pill-auditoria.aberto  { background: rgba(34,197,94,.15);  color: #4ade80; }
+
+/* ---- Painel de importação ---- */
+.painel-import-corpo {
+  padding: 1rem 1.25rem;
+  display: grid;
+  gap: 1.25rem;
+}
+.ajuda-excel {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  display: grid;
+  gap: .85rem;
+}
+.ajuda-excel-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.ajuda-excel-dica {
+  font-size: .9rem;
+  color: var(--texto-suave, #aab);
+  margin: 0;
+}
+.ajuda-excel-lista {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: .85rem;
+  color: var(--texto-suave, #aab);
+  display: grid;
+  gap: .25rem;
+}
+.tabela-mini th, .tabela-mini td {
+  font-size: .82rem;
+  padding: .4rem .55rem;
+}
+.campo-check label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.campo-check small { color: var(--texto-suave, #aab); }
+
+.formulario-import {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255,255,255,.02);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.06);
+}
+.formulario-import .campo {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.formulario-import input[type="file"],
+.formulario-import input[type="text"],
+.formulario-import textarea,
+.formulario-import select {
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.12);
+  color: inherit;
+  padding: .55rem .7rem;
+  border-radius: 6px;
+  font: inherit;
+}
+.formulario-import .erro { color: #ff6b6b; }
+
+.import-historico {
+  border-top: 1px dashed rgba(255,255,255,.1);
+  padding-top: .75rem;
+}
+.import-historico-titulo {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  opacity: .6;
+  margin-bottom: .4rem;
+}
+
+/* ---- Tabela de itens ---- */
+.tabela-itens td { vertical-align: top; }
+.linha-ok td { opacity: .65; }
+
+.item-obs {
+  font-size: .82rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 4px;
+  padding-left: 6px;
+  border-left: 2px solid rgba(255,255,255,.1);
+}
+
+.badge-fotos {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(59,130,246,.15);
+  color: #60a5fa;
+  border-radius: 99px;
+  font-size: .78rem;
+  font-weight: 500;
+}
+.suave { color: #64748b; }
+
+/* ---- Linha expandida (fotos + histórico) ---- */
+.linha-detalhe td {
+  padding: 0 12px 14px 12px !important;
+  border-top: none !important;
+  background: rgba(0,0,0,.15);
+}
+.detalhe-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+}
+@media (max-width: 900px) {
+  .detalhe-grid { grid-template-columns: 1fr; }
+}
+.detalhe-bloco {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.detalhe-titulo {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  font-weight: 600;
+}
+
+/* ---- Fotos ---- */
+.fotos-admin {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.foto-thumb {
+  position: relative;
+  display: block;
+  width: 96px;
+  height: 96px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  background: #000;
+}
+.foto-thumb:hover {
+  transform: scale(1.04);
+  border-color: var(--primario, #3b82f6);
+  box-shadow: 0 6px 20px rgba(59,130,246,.3);
+}
+.foto-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.foto-legenda {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.85));
+  color: #fff;
+  font-size: .65rem;
+  padding: 4px 6px 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Histórico ---- */
+.historico {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.historico li {
+  font-size: .78rem;
+  padding: 6px 9px;
+  background: rgba(255,255,255,.03);
+  border-radius: 6px;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+.historico .ev-data {
+  color: var(--texto-suave, #aab);
+  font-variant-numeric: tabular-nums;
+}
+.historico .ev-tipo { font-weight: 600; }
+.historico .ev-tipo.tipo-CRIADO        { color: #94a3b8; }
+.historico .ev-tipo.tipo-CONCLUIDO     { color: #22c55e; }
+.historico .ev-tipo.tipo-REABERTO      { color: #f59e0b; }
+.historico .ev-tipo.tipo-FOTO          { color: #3b82f6; }
+.historico .ev-tipo.tipo-FOTO_REMOVIDA { color: #ef4444; }
+.historico .ev-tipo.tipo-OBSERVACAO    { color: #a78bfa; }
+.historico .ev-autor { color: var(--texto, #e6edf3); }
+.historico .ev-texto {
+  grid-column: 1 / -1;
+  color: var(--texto-suave, #aab);
+  margin-top: 3px;
+  padding-left: 2px;
+  line-height: 1.35;
+}
+
+/* ---- Botões (caso o base.html não tenha) ---- */
+.btn-mini { padding: 5px 10px; font-size: .78rem; }
+</style>
+
+{% endblock %}

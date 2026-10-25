@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block titulo %}Checklists{% endblock %}
+
+{% block conteudo %}
+
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Operação · checklists</div>
+    <h1>Checklists</h1>
+    <div class="pagina-meta">
+      <span>{{ grupos|length }} missão{% if grupos|length != 1 %}s{% endif %} · {{ total_geral }} checklist{% if total_geral != 1 %}s{% endif %}</span>
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <a class="btn btn-primario" href="{% url 'checklist_novo' %}">+ Novo checklist</a>
+  </div>
+</section>
+
+<div class="console console-checklists">
+
+  {% for grupo in grupos %}
+    <section class="missao-grupo {% if not grupo.missao %}sem-missao{% endif %}">
+
+      <!-- ============================================
+           CABEÇALHO DA MISSÃO
+           ============================================ -->
+      <header class="missao-cabecalho">
+        <div class="missao-cabecalho-esq">
+          {% if grupo.missao %}
+            <div class="missao-kicker">Missão</div>
+            <h2>
+              {% if grupo.missao.pk %}
+                <a href="#">{{ grupo.missao.titulo }}</a>
+              {% else %}
+                {{ grupo.missao.titulo }}
+              {% endif %}
+            </h2>
+            <div class="missao-meta">
+              {% if grupo.missao.local %}
+                <span>📍 {{ grupo.missao.local }}</span>
+              {% endif %}
+              {% if grupo.missao.responsavel %}
+                <span>👤 {{ grupo.missao.responsavel.get_full_name|default:grupo.missao.responsavel.username }}</span>
+              {% endif %}
+              {% if grupo.missao.inicio_previsto %}
+                <span>🗓 {{ grupo.missao.inicio_previsto|date:"d/m/Y" }}</span>
+              {% endif %}
+              <span class="missao-status status-{{ grupo.missao.status }}">
+                {{ grupo.missao.get_status_display }}
+              </span>
+            </div>
+          {% else %}
+            <div class="missao-kicker">Sem vínculo</div>
+            <h2>Checklists sem missão</h2>
+            <div class="missao-meta">
+              <span>Estes checklists não estão associados a nenhuma missão.</span>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Resumo agregado do grupo -->
+        <div class="missao-resumo">
+          {% with total=grupo.checklists|length %}
+            <div class="missao-resumo-num">
+              {{ total }}<small>checklist{{ total|pluralize }}</small>
+            </div>
+          {% endwith %}
+          {% with feitos=0 %}
+            {# contagem de itens feitos vs total em cada checklist já vem pelo .pct #}
+          {% endwith %}
+        </div>
+      </header>
+
+      <!-- ============================================
+           TABELA DE CHECKLISTS DA MISSÃO
+           ============================================ -->
+      <div class="tabela-wrap">
+        <table class="tabela tabela-checklists">
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th style="width:110px;">Status</th>
+              <th style="width:180px;">Progresso</th>
+              <th style="width:130px;">Criado</th>
+              <th style="width:80px;text-align:center;">Link</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in grupo.checklists %}
+              <tr>
+                <td>
+                  <a href="{{ c.get_absolute_url }}" class="checklist-titulo">
+                    {{ c.titulo }}
+                  </a>
+                  {% if c.descricao %}
+                    <div class="checklist-desc">{{ c.descricao|truncatechars:80 }}</div>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <span class="status-pill status-{{ c.status|lower }}">
+                    {{ c.get_status_display }}
+                  </span>
+                </td>
+
+                <td>
+                  <div class="progresso-checklist">
+                    <div class="progresso-checklist-barra">
+                      <span style="width: {{ c.pct }}%"></span>
+                    </div>
+                    <small>{{ c.feitos }}/{{ c.total }} · {{ c.pct }}%</small>
+                  </div>
+                </td>
+
+                <td class="mono suave">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+
+                <td style="text-align:center;">
+                  {% if c.exige_login_auditoria %}
+                    <span class="pill-auditoria fechado" title="Auditoria exige login">🔒</span>
+                  {% else %}
+                    <span class="pill-auditoria aberto" title="Auditoria livre">🌐</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <a class="btn btn-mini" href="{{ c.get_absolute_url }}">Abrir</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </section>
+  {% empty %}
+    <section class="painel">
+      <div class="tabela-vazio" style="padding:40px;">
+        Nenhum checklist cadastrado ainda.
+        <br><br>
+        <a class="btn btn-primario" href="{% url 'checklist_novo' %}">+ Criar o primeiro</a>
+      </div>
+    </section>
+  {% endfor %}
+
+</div>
+
+<!-- ============================================
+     CSS
+     ============================================ -->
+<style>
+.console-checklists {
+  display: grid;
+  gap: 20px;
+}
+
+/* ---- Grupo de missão ---- */
+.missao-grupo {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.missao-grupo.sem-missao {
+  border-style: dashed;
+  opacity: .85;
+}
+
+.missao-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(
+    90deg,
+    rgba(59,130,246,.08),
+    rgba(59,130,246,.02) 60%,
+    transparent
+  );
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  flex-wrap: wrap;
+}
+.missao-grupo.sem-missao .missao-cabecalho {
+  background: rgba(255,255,255,.02);
+}
+
+.missao-cabecalho-esq {
+  min-width: 0;
+  flex: 1;
+}
+.missao-kicker {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.missao-grupo.sem-missao .missao-kicker {
+  color: #94a3b8;
+}
+.missao-cabecalho h2 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.missao-cabecalho h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+.missao-cabecalho h2 a:hover {
+  color: #60a5fa;
+}
+.missao-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: .82rem;
+  color: var(--texto-suave, #aab);
+  align-items: center;
+}
+.missao-status {
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: .72rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+}
+.missao-status.status-PREPARACAO  { background: rgba(245,158,11,.15); color: #fbbf24; }
+.missao-status.status-EM_OPERACAO { background: rgba(34,197,94,.15);  color: #4ade80; }
+.missao-status.status-PAUSADA     { background: rgba(148,163,184,.15); color: #cbd5e1; }
+.missao-status.status-FINALIZADA  { background: rgba(59,130,246,.15); color: #60a5fa; }
+.missao-status.status-CANCELADA   { background: rgba(239,68,68,.15);  color: #f87171; }
+
+.missao-resumo {
+  text-align: right;
+  flex-shrink: 0;
+}
+.missao-resumo-num {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #60a5fa;
+}
+.missao-resumo-num small {
+  display: block;
+  font-size: .7rem;
+  font-weight: 400;
+  color: var(--texto-suave, #aab);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-top: 4px;
+}
+
+/* ---- Tabela de checklists dentro do grupo ---- */
+.tabela-checklists {
+  width: 100%;
+}
+.tabela-checklists td {
+  vertical-align: middle;
+}
+.checklist-titulo {
+  font-weight: 500;
+  color: inherit;
+  text-decoration: none;
+}
+.checklist-titulo:hover {
+  color: #60a5fa;
+}
+.checklist-desc {
+  font-size: .78rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 2px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: .75rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+}
+.status-pill.status-rascunho  { background: rgba(148,163,184,.15); color: #cbd5e1; }
+.status-pill.status-ativo     { background: rgba(34,197,94,.15);  color: #4ade80; }
+.status-pill.status-concluido { background: rgba(59,130,246,.15); color: #60a5fa; }
+.status-pill.status-arquivado { background: rgba(100,116,139,.15); color: #94a3b8; }
+
+/* ---- Barra de progresso ---- */
+.progresso-checklist {
+  display: grid;
+  gap: 4px;
+}
+.progresso-checklist-barra {
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.08);
+  overflow: hidden;
+}
+.progresso-checklist-barra span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width .3s ease;
+}
+.progresso-checklist small {
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+}
+
+.pill-auditoria {
+  font-size: .9rem;
+}
+.suave { color: #64748b; }
+.btn-mini { padding: 5px 10px; font-size: .78rem; }
+
+/* ---- Responsivo ---- */
+@media (max-width: 720px) {
+  .missao-cabecalho { flex-direction: column; }
+  .missao-resumo { text-align: left; }
+  .tabela-checklists thead { display: none; }
+  .tabela-checklists tr {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .tabela-checklists td { padding: 0; }
+}
+</style>
+
+{% endblock %}

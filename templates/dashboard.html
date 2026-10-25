@@ -5,7 +5,7 @@
 {% block conteudo %}
 
 <!-- ============================================
-     CABEÇALHO DA PÁGINA
+     CABEÇALHO
      ============================================ -->
 <section class="pagina-cabecalho">
   <div class="pagina-cabecalho-esq">
@@ -30,24 +30,49 @@
 </section>
 
 <!-- ============================================
+     MÉTRICAS RÁPIDAS
+     ============================================ -->
+<section class="kpis">
+  <div class="kpi kpi-missao">
+    <div class="kpi-rotulo">Missões ativas</div>
+    <div class="kpi-valor">{{ missoes_em_operacao }}<small>/{{ total_missoes }}</small></div>
+    <div class="kpi-sub">em operação / total</div>
+  </div>
+
+  <div class="kpi kpi-checklist">
+    <div class="kpi-rotulo">Checklists</div>
+    <div class="kpi-valor">{{ checklists_concluidos }}<small>/{{ total_checklists }}</small></div>
+    <div class="kpi-sub">concluídos / total</div>
+  </div>
+
+  <div class="kpi kpi-demanda">
+    <div class="kpi-rotulo">Demandas abertas</div>
+    <div class="kpi-valor">{{ n_abertas }}<small>de {{ total }}</small></div>
+    <div class="kpi-sub">{{ n_criticas }} crítica{{ n_criticas|pluralize }} · {{ n_atrasadas }} atrasada{{ n_atrasadas|pluralize }}</div>
+  </div>
+
+  <div class="kpi kpi-auditoria">
+    <div class="kpi-rotulo">Fotos de auditoria</div>
+    <div class="kpi-valor">{{ total_fotos }}</div>
+    <div class="kpi-sub">{{ fotos_recentes|length }} recentes</div>
+  </div>
+</section>
+
+<!-- ============================================
      CONSOLE PRINCIPAL
      ============================================ -->
 <div class="console">
 
-  <!-- LINHA 1: barco (2 cols) + prontidão (1 col) -->
+  <!-- LINHA 1: barco + prontidão -->
   <section class="console-barco">
     <div class="barco-moldura {{ estado }}">
-
       <div class="barco-cena" id="barco-cena">
         <div class="barco-flutuante">
-          <!-- Wrapper: pontos ficam DENTRO dele, então balançam junto -->
           <div class="barco-img-wrap" id="barco-img-wrap">
             <img src="{% static 'img/barco-l42.png' %}" alt="USV L42">
-            <!-- Os pontos vermelhos entram aqui via JS -->
           </div>
         </div>
       </div>
-
       <div class="barco-legenda">
         <span class="leg"><span class="dot ok"></span>Starlink</span>
         <span class="leg"><span class="dot ok"></span>VPN</span>
@@ -81,6 +106,14 @@
         impede{{ n_bloqueantes|pluralize:",m" }} operar.
       </div>
     {% endif %}
+
+    <!-- Resumo rápido dentro do painel -->
+    <ul class="prontidao-resumo">
+      <li><span>Em andamento</span><b>{{ n_andamento }}</b></li>
+      <li><span>Pendentes</span><b>{{ n_pendentes }}</b></li>
+      <li><span>Bloqueadas</span><b>{{ n_bloqueadas }}</b></li>
+      <li><span>Atrasadas</span><b class="{% if n_atrasadas %}alerta{% endif %}">{{ n_atrasadas }}</b></li>
+    </ul>
   </section>
 
   <!-- LINHA 2: instrumentos -->
@@ -117,36 +150,71 @@
     </div>
   </section>
 
-  <!-- LINHA 3: três painéis -->
-  <section class="painel">
+  <!-- LINHA 3: missões ativas + checklists ativos -->
+  <section class="painel painel-missoes">
     <header class="painel-titulo">
-      <span>Missões recentes</span>
-      <a class="painel-titulo-acao" href="{% url 'demanda_lista' %}">ver todas →</a>
+      <span>Missões ativas</span>
+      <a class="painel-titulo-acao" href="{% url 'missoes' %}">ver todas →</a>
     </header>
-    <table class="tabela">
-      <thead>
-        <tr>
-          <th class="mono">ID</th>
-          <th>Missão</th>
-          <th class="mono">Hora</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for o in operacoes %}
-          <tr>
-            <td class="mono">{{ o.codigo }}</td>
-            <td>{{ o.titulo }}</td>
-            <td class="mono">{{ o.criado_em|date:"d/m H:i" }}</td>
-            <td><span class="dot {{ o.cor_status }}"></span>{{ o.get_status_display }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="4" class="tabela-vazio">Sem missões registradas.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    {% for m in missoes_ativas %}
+      <div class="missao-card">
+        <div class="missao-card-topo">
+          <div>
+            <strong>{{ m.titulo }}</strong>
+            <div class="missao-card-meta">
+              <span class="status-pill status-{{ m.status|lower }}">{{ m.get_status_display }}</span>
+              {% if m.local %}<span>📍 {{ m.local }}</span>{% endif %}
+              {% if m.responsavel %}<span>👤 {{ m.responsavel.get_full_name|default:m.responsavel.username }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="missao-card-pct">
+            {{ m.progresso }}<small>%</small>
+          </div>
+        </div>
+        <div class="missao-card-barra">
+          <span style="width:{{ m.progresso }}%"></span>
+        </div>
+        <div class="missao-card-rodape">
+          {{ m.n_checklists }} checklist{{ m.n_checklists|pluralize }}
+          · {{ m.n_checklists_concluidos }} concluído{{ m.n_checklists_concluidos|pluralize }}
+        </div>
+      </div>
+    {% empty %}
+      <div class="tabela-vazio" style="padding:24px;">
+        Nenhuma missão ativa. <a href="{% url 'missao_nova' %}">Criar missão →</a>
+      </div>
+    {% endfor %}
   </section>
 
+  <section class="painel painel-checklists">
+    <header class="painel-titulo">
+      <span>Checklists em andamento</span>
+      <a class="painel-titulo-acao" href="{% url 'checklist_lista' %}">ver todos →</a>
+    </header>
+
+    {% for c in checklists_ativos %}
+      <a href="{{ c.get_absolute_url }}" class="checklist-card">
+        <div class="checklist-card-topo">
+          <strong>{{ c.titulo }}</strong>
+          <span class="checklist-card-pct">{{ c.pct_calc }}%</span>
+        </div>
+        <div class="checklist-card-barra">
+          <span style="width:{{ c.pct_calc }}%"></span>
+        </div>
+        <div class="checklist-card-rodape">
+          {% if c.missao %}{{ c.missao.titulo }}{% else %}Sem missão{% endif %}
+          · {{ c.itens_feitos }}/{{ c.total_itens }} itens
+        </div>
+      </a>
+    {% empty %}
+      <div class="tabela-vazio" style="padding:24px;">
+        Nenhum checklist ainda. <a href="{% url 'checklist_novo' %}">Criar →</a>
+      </div>
+    {% endfor %}
+  </section>
+
+  <!-- LINHA 4: condições do mar + sistemas -->
   <section class="painel">
     <header class="painel-titulo">
       <span>Condições no mar</span>
@@ -180,8 +248,67 @@
     </ul>
   </section>
 
-  <!-- LINHA 4: mapa + diário -->
-  <section class="painel painel-mapa">
+  <!-- LINHA 5: auditoria recente -->
+  <section class="painel painel-auditoria" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Auditoria recente</span>
+      <span class="painel-titulo-acao">📷 {{ total_fotos }}</span>
+    </header>
+
+    {% if fotos_recentes %}
+      <div class="auditoria-grid">
+        {% for f in fotos_recentes %}
+          <a href="{{ f.imagem.url }}" target="_blank" class="auditoria-foto">
+            <img src="{{ f.imagem.url }}" alt="">
+            <div class="auditoria-foto-info">
+              <strong>{{ f.item.titulo|truncatechars:30 }}</strong>
+              <small>
+                {{ f.item.checklist.titulo|truncatechars:20 }}
+                {% if f.enviado_por %}
+                  · {{ f.enviado_por.username }}
+                {% endif %}
+                · {{ f.enviado_em|date:"d/m H:i" }}
+              </small>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="tabela-vazio" style="padding:24px;">
+        Nenhuma foto de auditoria ainda.
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- LINHA 6: diário de bordo -->
+  <section class="painel painel-diario" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Diário de bordo</span>
+      <a class="painel-titulo-acao" href="{% url 'demanda_lista' %}">ver tudo →</a>
+    </header>
+    <ul class="diario">
+      {% for d in diario %}
+        <li class="diario-item diario-{{ d.cor }}">
+          <span class="diario-icone">{{ d.icone }}</span>
+          <div class="diario-conteudo">
+            <div class="diario-topo">
+              <strong>{{ d.titulo }}</strong>
+              <span class="mono diario-hora">{{ d.quando|date:"d/m H:i" }}</span>
+            </div>
+            <small>
+              {{ d.texto }}
+              {% if d.autor %} · {{ d.autor }}{% endif %}
+            </small>
+          </div>
+        </li>
+      {% empty %}
+        <li class="tabela-vazio">Sem eventos recentes.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <!-- LINHA 7: mapa -->
+  <section class="painel painel-mapa" style="grid-column: 1 / -1;">
     <header class="painel-titulo">
       <span>Posição e trajeto</span>
       <span class="painel-titulo-acao">AIS</span>
@@ -190,85 +317,389 @@
       <div class="mapa-grade"></div>
       <div class="mapa-centro">
         <span class="mapa-pos">◉</span>
-        <span class="mapa-coord mono">{{ embarcacao.lat|default:"-21.7256" }}, {{ embarcacao.lon|default:"-41.0267" }}</span>
+        <span class="mapa-coord mono">{{ embarcacao.lat }}, {{ embarcacao.lon }}</span>
       </div>
-      <div class="mapa-base mono">{{ embarcacao.base|default:"Porto do Açu · RJ" }}</div>
+      <div class="mapa-base mono">{{ embarcacao.base }}</div>
     </div>
-  </section>
-
-  <section class="painel painel-diario">
-    <header class="painel-titulo">
-      <span>Diário de bordo</span>
-      <a class="painel-titulo-acao" href="#">ver tudo →</a>
-    </header>
-    <ul class="diario">
-      {% for a in recentes %}
-        <li>
-          <span class="diario-hora mono">{{ a.criado_em|date:"H:i" }}</span>
-          <span class="diario-linha {{ a.tipo_evento|default:'' }}"></span>
-          <div class="diario-conteudo">
-            <strong>{{ a.demanda.titulo }}</strong>
-            <small>{{ a.autor|nome }} · {{ a.get_status_novo_display|default:a.texto|truncatechars:50 }}</small>
-          </div>
-        </li>
-      {% empty %}
-        <li class="tabela-vazio">Sem eventos.</li>
-      {% endfor %}
-    </ul>
   </section>
 
 </div>
 
 <!-- ============================================
-     SCRIPT: ALERTAS DINÂMICOS NO BARCO
+     CSS
+     ============================================ -->
+<style>
+/* ---- KPIs ---- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.kpi {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: 3px solid #3b82f6;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.kpi-missao    { border-left-color: #60a5fa; }
+.kpi-checklist { border-left-color: #4ade80; }
+.kpi-demanda   { border-left-color: #fbbf24; }
+.kpi-auditoria { border-left-color: #a78bfa; }
+
+.kpi-rotulo {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  margin-bottom: 4px;
+}
+.kpi-valor {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.kpi-valor small {
+  font-size: .8rem;
+  font-weight: 400;
+  color: var(--texto-suave, #aab);
+  margin-left: 2px;
+}
+.kpi-sub {
+  font-size: .72rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 4px;
+}
+
+/* ---- Prontidão: resumo ---- */
+.prontidao-resumo {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.prontidao-resumo li {
+  display: flex;
+  justify-content: space-between;
+  font-size: .8rem;
+  padding: 4px 8px;
+  background: rgba(255,255,255,.03);
+  border-radius: 6px;
+  color: var(--texto-suave, #aab);
+}
+.prontidao-resumo b { color: var(--texto, #e6edf3); }
+.prontidao-resumo b.alerta { color: #f87171; }
+
+/* ---- Missões cards ---- */
+.missao-card {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.missao-card:last-child { border-bottom: none; }
+.missao-card-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.missao-card-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 4px;
+  align-items: center;
+}
+.missao-card-pct {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #60a5fa;
+  line-height: 1;
+}
+.missao-card-pct small { font-size: .7rem; }
+.missao-card-barra {
+  height: 5px;
+  background: rgba(255,255,255,.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.missao-card-barra span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+.missao-card-rodape {
+  font-size: .72rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 6px;
+}
+
+.status-pill {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: .68rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+}
+.status-pill.status-preparacao  { background: rgba(245,158,11,.15); color: #fbbf24; }
+.status-pill.status-em_operacao { background: rgba(34,197,94,.15);  color: #4ade80; }
+.status-pill.status-pausada     { background: rgba(148,163,184,.15); color: #cbd5e1; }
+.status-pill.status-finalizada  { background: rgba(59,130,246,.15); color: #60a5fa; }
+.status-pill.status-cancelada   { background: rgba(239,68,68,.15);  color: #f87171; }
+
+/* ---- Checklists cards ---- */
+.checklist-card {
+  display: block;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  text-decoration: none;
+  color: inherit;
+  transition: background .15s;
+}
+.checklist-card:hover { background: rgba(59,130,246,.05); }
+.checklist-card:last-child { border-bottom: none; }
+.checklist-card-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.checklist-card-pct {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+.checklist-card-barra {
+  height: 4px;
+  background: rgba(255,255,255,.08);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+.checklist-card-barra span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+.checklist-card-rodape {
+  font-size: .72rem;
+  color: var(--texto-suave, #aab);
+}
+
+/* ---- Auditoria grid ---- */
+.auditoria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+.auditoria-foto {
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(255,255,255,.08);
+  transition: transform .15s, border-color .15s;
+}
+.auditoria-foto:hover {
+  transform: translateY(-2px);
+  border-color: #60a5fa;
+}
+.auditoria-foto img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+.auditoria-foto-info {
+  padding: 6px 8px;
+  display: grid;
+  gap: 2px;
+}
+.auditoria-foto-info strong {
+  font-size: .8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.auditoria-foto-info small {
+  font-size: .68rem;
+  color: var(--texto-suave, #aab);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Diário ---- */
+.diario-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  align-items: flex-start;
+}
+.diario-item:last-child { border-bottom: none; }
+.diario-icone {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.05);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.diario-demanda .diario-icone   { background: rgba(245,158,11,.15); }
+.diario-checklist .diario-icone { background: rgba(74,222,128,.15); }
+.diario-conteudo { flex: 1; min-width: 0; }
+.diario-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.diario-topo strong {
+  font-size: .88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.diario-hora {
+  font-size: .7rem;
+  color: var(--texto-suave, #aab);
+  flex-shrink: 0;
+}
+.diario-conteudo small {
+  display: block;
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 2px;
+}
+
+/* ---- Responsivo ---- */
+@media (max-width: 720px) {
+  .prontidao-resumo { grid-template-columns: 1fr; }
+  .auditoria-grid   { grid-template-columns: 1fr 1fr; }
+  .auditoria-foto img { height: 90px; }
+}
+</style>
+
+<!-- ============================================
+     SCRIPT: ALERTAS NO BARCO (dados reais)
      ============================================ -->
 <script>
-  // =========================================================
-  // MAPA DE COORDENADAS (relativas à IMAGEM do barco)
-  // 0% = topo/esquerda da imagem · 100% = base/direita
-  // =========================================================
-  const LOCAIS_BARCO = {
-    "proa":      { top: "50%", left: "8%"  },
-    "casco":     { top: "82%", left: "45%" },
-    "cabine":    { top: "48%", left: "50%" },
-    "mastro":    { top: "15%", left: "42%" },
-    "antena":    { top: "2%",  left: "46%" },
-    "motor":     { top: "72%", left: "78%" },
-    "helice":    { top: "88%", left: "95%" },
-    "bateria":   { top: "68%", left: "68%" },
-    "starlink":  { top: "5%",  left: "45%" },
-    "leme":      { top: "78%", left: "90%" },
-    // 🔧 novo local: inversor (parte interna, atrás da cabine)
-    "inversor":  { top: "58%", left: "62%" },
-  };
+const LOCAIS_BARCO = {
+  "proa":     { top: "50%", left: "8%"  },
+  "casco":    { top: "82%", left: "45%" },
+  "cabine":   { top: "48%", left: "50%" },
+  "mastro":   { top: "15%", left: "42%" },
+  "antena":   { top: "2%",  left: "46%" },
+  "motor":    { top: "72%", left: "78%" },
+  "helice":   { top: "88%", left: "95%" },
+  "bateria":  { top: "68%", left: "68%" },
+  "starlink": { top: "5%",  left: "45%" },
+  "leme":     { top: "78%", left: "90%" },
+  "inversor": { top: "58%", left: "62%" },
+};
 
-  // =========================================================
-  // 🔴 MODO TESTE — 2 problemas: proa + inversor
-  //
-  // Em produção, troque o bloco abaixo pela linha:
-  //   const problemasAtuais = {{ problemas_barco|default:"[]"|safe }};
-  // =========================================================
-  const problemasAtuais = [
-    {
-      local: "proa",
-      titulo: "Defeito na proa",
-      codigo: "L42-07",
-      prioridade: "Alta",
-      bloqueante: false
-    },
-    {
-      local: "inversor",
-      titulo: "Defeito no inversor",
-      codigo: "L42-11",
-      prioridade: "Crítica",
-      bloqueante: true
-    },
-  ];
+// Dados reais vindos da view
+const problemasAtuais = {{ problemas_barco|default:"[]"|safe }};
 
-  // =========================================================
-  // RENDERIZA OS PONTOS DENTRO DO WRAPPER DA IMAGEM
+document.addEventListener('DOMContentLoaded', () => {
+  const wrap = document.getElementById('barco-img-wrap');
+  if (!wrap) return;
 
-  document.addEventListener('DOMContentLoaded', renderizarAlertasBarco);
+  problemasAtuais.forEach(p => {
+    const pos = LOCAIS_BARCO[p.local] || LOCAIS_BARCO["cabine"];
+    const el = document.createElement('span');
+    el.className = 'ponto-alerta' + (p.bloqueante ? ' bloqueante' : '');
+    el.style.top = pos.top;
+    el.style.left = pos.left;
+    el.title = `${p.codigo} · ${p.titulo} (${p.prioridade})`;
+    el.dataset.codigo = p.codigo;
+
+    // tooltip
+    const tip = document.createElement('span');
+    tip.className = 'ponto-tooltip';
+    tip.innerHTML = `<b>${p.codigo}</b> ${p.titulo}<br><small>${p.prioridade}${p.bloqueante ? ' · BLOQUEANTE' : ''}</small>`;
+    el.appendChild(tip);
+
+    wrap.appendChild(el);
+  });
+});
 </script>
+
+<style>
+/* ---- Pontos de alerta no barco ---- */
+#barco-img-wrap {
+  position: relative;
+  width: 100%;
+}
+#barco-img-wrap > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ponto-alerta {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  background: #f59e0b;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 0 0 rgba(245,158,11,.7);
+  animation: pulso 2s infinite;
+  z-index: 5;
+}
+.ponto-alerta.bloqueante {
+  background: #ef4444;
+  animation: pulso-bloq 1.4s infinite;
+}
+.ponto-alerta:hover { z-index: 20; }
+
+@keyframes pulso {
+  0%   { box-shadow: 0 0 0 0 rgba(245,158,11,.6); }
+  70%  { box-shadow: 0 0 0 12px rgba(245,158,11,0); }
+  100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+}
+@keyframes pulso-bloq {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.7); }
+  70%  { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
+
+.ponto-tooltip {
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%) scale(.9);
+  background: #0f1720;
+  border: 1px solid rgba(255,255,255,.15);
+  color: #e6edf3;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: .75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s, transform .15s;
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+}
+.ponto-tooltip small { color: #aab; }
+.ponto-alerta:hover .ponto-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+</style>
 
 {% endblock %}

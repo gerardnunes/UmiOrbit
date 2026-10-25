@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Auditoria · {{ checklist.titulo }}</title>
+  <style>
+    :root {
+      --bg: #0f1720;
+      --card: #16202c;
+      --card-2: #1d2a3a;
+      --linha: rgba(255,255,255,.08);
+      --texto: #e6edf3;
+      --suave: #93a4b8;
+      --ok: #22c55e;
+      --atencao: #f59e0b;
+      --erro: #ef4444;
+      --primario: #3b82f6;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--texto); padding: 0 0 80px;
+    }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(15,23,32,.92); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--linha);
+      padding: 14px 16px;
+    }
+    header h1 { font-size: 1.05rem; margin: 0 0 4px; }
+    header .meta { font-size: .8rem; color: var(--suave); }
+
+    .progresso {
+      margin-top: 8px; height: 6px; border-radius: 99px;
+      background: rgba(255,255,255,.08); overflow: hidden;
+    }
+    .progresso span {
+      display: block; height: 100%; background: var(--primario);
+      transition: width .3s ease;
+    }
+
+    main { padding: 12px; display: grid; gap: 12px; }
+
+    .item {
+      background: var(--card); border: 1px solid var(--linha);
+      border-radius: 12px; padding: 12px;
+      display: grid; gap: 10px;
+    }
+    .item.feito { opacity: .7; }
+    .item-topo { display: flex; gap: 10px; align-items: flex-start; }
+    .item-titulo { flex: 1; }
+    .item-titulo strong { font-size: .98rem; }
+    .item-titulo small {
+      display: block; color: var(--suave); font-size: .8rem; margin-top: 2px;
+    }
+    .item-info {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      font-size: .75rem; color: var(--suave);
+    }
+    .pill {
+      background: rgba(255,255,255,.05); padding: 2px 8px; border-radius: 99px;
+    }
+    .pill.prio-ALTA { color: #fbbf24; }
+    .pill.prio-CRITICA { color: #f87171; }
+    .pill.prio-BAIXA { color: #94a3b8; }
+
+    .btn {
+      appearance: none; border: 1px solid var(--linha);
+      background: var(--card-2); color: var(--texto);
+      padding: 10px 14px; border-radius: 10px; font-size: .9rem;
+      font-weight: 500; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px;
+      touch-action: manipulation;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primario { background: var(--primario); border-color: var(--primario); }
+    .btn-ok { background: var(--ok); border-color: var(--ok); color: #06210e; }
+    .btn-erro { background: transparent; border-color: var(--erro); color: var(--erro); }
+    .btn-mini { padding: 6px 10px; font-size: .8rem; }
+
+    .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .fotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .foto {
+      position: relative; aspect-ratio: 1; overflow: hidden;
+      border-radius: 8px; background: #000;
+    }
+    .foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .foto form {
+      position: absolute; top: 4px; right: 4px;
+    }
+    .foto button {
+      width: 26px; height: 26px; border-radius: 50%; border: 0;
+      background: rgba(0,0,0,.65); color: #fff; font-size: .8rem; cursor: pointer;
+    }
+
+    .upload {
+      display: grid; gap: 8px; padding: 10px;
+      background: rgba(255,255,255,.02); border-radius: 10px;
+      border: 1px dashed var(--linha);
+    }
+    .upload input[type=file] { font-size: .85rem; color: var(--suave); }
+    .upload input[type=text], .upload textarea {
+      width: 100%; padding: 8px 10px; border-radius: 8px;
+      border: 1px solid var(--linha); background: rgba(0,0,0,.25);
+      color: var(--texto); font: inherit;
+    }
+    .upload label.check {
+      display: flex; gap: 6px; align-items: center; font-size: .85rem;
+    }
+
+    .vazio { text-align: center; color: var(--suave); padding: 40px 20px; }
+    .toast {
+      position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+      background: #1e293b; border: 1px solid var(--linha); color: #fff;
+      padding: 10px 16px; border-radius: 99px; font-size: .85rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,.5); z-index: 50;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>{{ checklist.titulo }}</h1>
+  <div class="meta">
+    {{ checklist.feitos }}/{{ checklist.total }} concluídos
+    {% if checklist.missao %} · {{ checklist.missao }}{% endif %}
+  </div>
+  <div class="progresso"><span style="width:{{ checklist.pct }}%"></span></div>
+</header>
+
+<main>
+  {% if not itens %}
+    <div class="vazio">Nenhum item neste checklist ainda.</div>
+  {% endif %}
+
+  {% for item in itens %}
+    <section class="item {% if item.concluido %}feito{% endif %}">
+      <div class="item-topo">
+        <div class="item-titulo">
+          <strong>{{ item.ordem }}. {{ item.titulo }}</strong>
+          {% if item.descricao %}<small>{{ item.descricao }}</small>{% endif %}
+        </div>
+      </div>
+
+      <div class="item-info">
+        {% if item.sistema %}<span class="pill">{{ item.sistema.nome }}</span>{% endif %}
+        <span class="pill prio-{{ item.prioridade }}">{{ item.get_prioridade_display }}</span>
+        {% if item.responsavel %}<span class="pill">{{ item.responsavel }}</span>{% endif %}
+        {% if item.concluido %}<span class="pill" style="color:var(--ok)">✓ Concluído</span>{% endif %}
+      </div>
+
+      {% if item.observacao %}
+        <div style="font-size:.85rem;color:var(--suave)">
+          <b>Obs.:</b> {{ item.observacao }}
+        </div>
+      {% endif %}
+
+      <!-- Ações -->
+      <div class="acoes">
+        <form method="post"
+              action="{% url 'auditoria_toggle' checklist.token_auditoria item.pk %}">
+          {% csrf_token %}
+          {% if item.concluido %}
+            <button class="btn" type="submit">↺ Reabrir</button>
+          {% else %}
+            <button class="btn btn-ok" type="submit">✓ Concluir</button>
+          {% endif %}
+        </form>
+      </div>
+
+      <!-- Fotos existentes -->
+      {% if item.fotos.all %}
+        <div class="fotos">
+          {% for foto in item.fotos.all %}
+            <div class="foto">
+              <a href="{{ foto.imagem.url }}" target="_blank">
+                <img src="{{ foto.imagem.url }}" alt="">
+              </a>
+              <form method="post"
+                    action="{% url 'auditoria_foto_remover' checklist.token_auditoria foto.pk %}"
+                    onsubmit="return confirm('Remover esta foto?');">
+                {% csrf_token %}
+                <button type="submit" title="Remover">×</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <!-- Upload de foto -->
+      <form class="upload"
+            method="post"
+            enctype="multipart/form-data"
+            action="{% url 'auditoria_foto' checklist.token_auditoria item.pk %}">
+        {% csrf_token %}
+        <input type="file" name="imagem" accept="image/*" capture="environment" required>
+        <input type="text" name="legenda" placeholder="Legenda (opcional)">
+        {% if not item.concluido %}
+          <label class="check">
+            <input type="checkbox" name="concluir" checked>
+            Marcar item como concluído ao enviar
+          </label>
+        {% endif %}
+        <button class="btn btn-primario" type="submit">📷 Enviar foto</button>
+      </form>
+    </section>
+  {% endfor %}
+</main>
+
+{% if messages %}
+  {% for m in messages %}
+    <div class="toast">{{ m }}</div>
+  {% endfor %}
+{% endif %}
+
+</body>
+</html>

@@ -1,7 +1,17 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
-from .models import Demanda, Perfil, Prioridade, Sistema, Status, Tipo
+from .models import (
+    Demanda,
+    Missao,
+    Perfil,
+    Prioridade,
+    Sistema,
+    Status,
+    StatusMissao,
+    Tipo,
+)
 
 User = get_user_model()
 
@@ -14,8 +24,21 @@ def _equipe_ativa():
 class DemandaForm(forms.ModelForm):
     class Meta:
         model = Demanda
-        fields = ["titulo", "tipo","classe", "sistema", "prioridade", "item_faltante", "quantidade",
-                  "bloqueia_operacao", "descricao", "responsavel", "prazo", "status"]
+        fields = [
+            "titulo",
+            "tipo",
+            "classe",
+            "sistema",
+            "missao",              # <- novo
+            "prioridade",
+            "item_faltante",
+            "quantidade",
+            "bloqueia_operacao",
+            "descricao",
+            "responsavel",
+            "prazo",
+            "status",
+        ]
         widgets = {
             "descricao": forms.Textarea(attrs={"rows": 5}),
             "prazo": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
@@ -23,18 +46,58 @@ class DemandaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # ----- Responsável -----
         self.fields["responsavel"].queryset = _equipe_ativa()
-        self.fields["responsavel"].label_from_instance = lambda u: u.get_full_name() or u.username
+        self.fields["responsavel"].label_from_instance = (
+            lambda u: u.get_full_name() or u.username
+        )
         self.fields["responsavel"].empty_label = "Ninguém ainda"
-        if not self.instance.pk:  # nova demanda sempre nasce pendente
-            del self.fields["status"]
+
+        # ----- Missão (opcional) -----
+        # Só permite vincular a missões que ainda estão em curso.
+        # A FK aceita null, então o campo também precisa aceitar vazio.
+        self.fields["missao"].queryset = (
+            Missao.objects
+            .filter(status__in=[
+                StatusMissao.PREPARACAO,
+                StatusMissao.EM_OPERACAO,
+                StatusMissao.PAUSADA,
+            ])
+            .order_by("-criado_em")
+        )
+        self.fields["missao"].required = False
+        self.fields["missao"].empty_label = "— Sem missão (por fora) —"
+
+        # Se já existe uma missão vinculada (editando uma demanda antiga
+        # que aponta pra missão finalizada), mantém ela no queryset pra
+        # não sumir do form.
+        if self.instance and self.instance.pk and self.instance.missao_id:
+            atual = self.instance.missao
+            if not self.fields["missao"].queryset.filter(pk=atual.pk).exists():
+                self.fields["missao"].queryset = (
+                    Missao.objects.filter(
+                        Q(pk=atual.pk)
+                        | Q(status__in=[
+                            StatusMissao.PREPARACAO,
+                            StatusMissao.EM_OPERACAO,
+                            StatusMissao.PAUSADA,
+                        ])
+                    ).order_by("-criado_em")
+                )
+
+        # ----- Status: nova demanda nasce pendente -----
+        if not self.instance.pk:
+            self.fields.pop("status", None)
 
     def clean(self):
         dados = super().clean()
+
+        # Faltante exige item_faltante
         if dados.get("tipo") == Tipo.FALTANTE and not dados.get("item_faltante"):
             self.add_error("item_faltante", "Diga qual item está faltando.")
-        return dados
 
+        return dados
 
 class AtualizacaoForm(forms.Form):
     status = forms.ChoiceField(label="Novo status", required=False,
@@ -123,3 +186,42 @@ class MissaoForm(forms.ModelForm):
                 }
             ),
         }
+
+from django import forms
+from .models import Checklist, ChecklistImportacao
+
+
+class ChecklistForm(forms.ModelForm):
+    class Meta:
+        model = Checklist
+        fields = ["titulo", "descricao", "missao", "status"]
+        widgets = {
+            "descricao": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class ChecklistImportForm(forms.Form):
+    arquivo = forms.FileField(
+        label="Planilha Excel (.xlsx)",
+        help_text=(
+            "Colunas esperadas: Ordem, Título, Descrição, Sistema, "
+            "Prioridade, Responsável."
+        ),
+    )
+    criar_sistemas = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Criar sistemas que não existirem no banco",
+    )
+    substituir = forms.BooleanField(
+        required=False,
+        label="Apagar itens atuais antes de importar",
+    )
+
+    def clean_arquivo(self):
+        f = self.cleaned_data["arquivo"]
+        if not f.name.lower().endswith((".xlsx", ".xlsm")):
+            raise forms.ValidationError("Envie um arquivo .xlsx (Excel 2007+).")
+        if f.size > 10 * 1024 * 1024:
+            raise forms.ValidationError("Arquivo muito grande (máx. 10 MB).")
+        return f

@@ -1,11 +1,13 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-
-admin.site.site_header = "L42 · Administração"
-admin.site.site_title = "L42"
-admin.site.index_title = "Gestão do barco autônomo"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("operacao.urls")),
+    # ... o resto que você já tinha ...
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block titulo %}{{ missao.titulo }}{% endblock %}
+
+{% block conteudo %}
+
+<!-- ============================================
+     CABEÇALHO
+     ============================================ -->
+<div class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Missão #{{ missao.pk }}</div>
+    <h1>{{ missao.titulo }}</h1>
+    <div class="pagina-meta">
+      <span class="status-pill status-{{ missao.status|lower }}">
+        {{ missao.get_status_display }}
+      </span>
+      {% if missao.local %}<span>{{ missao.local }}</span>{% endif %}
+      {% if missao.responsavel %}
+        <span>{{ missao.responsavel.get_full_name|default:missao.responsavel.username }}</span>
+      {% endif %}
+      <span>{{ missao.progresso_geral }}% concluído · {{ missao.itens_feitos }}/{{ missao.total_itens }} itens</span>
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <a class="btn" href="{% url 'missoes' %}">← Voltar</a>
+  </div>
+</div>
+
+<div class="console console-missao-detail">
+
+  <!-- ============================================
+       BLOCO PRINCIPAL — INFORMAÇÕES
+       ============================================ -->
+  <section class="painel" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Informações da missão</span>
+      <span class="painel-titulo-acao">MIS</span>
+    </header>
+
+    <div class="detail-info">
+
+      <div class="detail-info-grid">
+        <div>
+          <div class="detail-rotulo">Status</div>
+          <div class="detail-valor">{{ missao.get_status_display }}</div>
+        </div>
+        <div>
+          <div class="detail-rotulo">Local</div>
+          <div class="detail-valor">{{ missao.local|default:"Não informado" }}</div>
+        </div>
+        <div>
+          <div class="detail-rotulo">Responsável</div>
+          <div class="detail-valor">
+            {% if missao.responsavel %}
+              {{ missao.responsavel.get_full_name|default:missao.responsavel.username }}
+            {% else %}
+              Não definido
+            {% endif %}
+          </div>
+        </div>
+        <div>
+          <div class="detail-rotulo">Criada por</div>
+          <div class="detail-valor">
+            {% if missao.criado_por %}
+              {{ missao.criado_por.get_full_name|default:missao.criado_por.username }}
+            {% else %}
+              —
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-info-grid">
+        <div>
+          <div class="detail-rotulo">Início previsto</div>
+          <div class="detail-valor mono">{{ missao.inicio_previsto|date:"d/m/Y H:i"|default:"—" }}</div>
+        </div>
+        <div>
+          <div class="detail-rotulo">Início real</div>
+          <div class="detail-valor mono">{{ missao.inicio|date:"d/m/Y H:i"|default:"—" }}</div>
+        </div>
+        <div>
+          <div class="detail-rotulo">Fim</div>
+          <div class="detail-valor mono">{{ missao.fim|date:"d/m/Y H:i"|default:"—" }}</div>
+        </div>
+        <div>
+          <div class="detail-rotulo">Criada em</div>
+          <div class="detail-valor mono">{{ missao.criado_em|date:"d/m/Y H:i" }}</div>
+        </div>
+      </div>
+
+      {% if missao.objetivo %}
+        <div class="detail-bloco-texto">
+          <div class="detail-rotulo">Objetivo</div>
+          <p>{{ missao.objetivo|linebreaksbr }}</p>
+        </div>
+      {% endif %}
+
+      {% if missao.observacoes %}
+        <div class="detail-bloco-texto">
+          <div class="detail-rotulo">Observações</div>
+          <p>{{ missao.observacoes|linebreaksbr }}</p>
+        </div>
+      {% endif %}
+
+    </div>
+  </section>
+
+  <!-- ============================================
+       PROGRESSO GERAL
+       ============================================ -->
+  <section class="painel" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Progresso geral</span>
+      <span class="painel-titulo-acao">FSM</span>
+    </header>
+
+    <div class="progresso-bloco">
+      <div class="progresso-topo">
+        <div>
+          <strong>{{ missao.progresso_geral }}%</strong>
+          <span class="suave">concluído</span>
+        </div>
+        <div class="suave">
+          {{ missao.itens_feitos }} de {{ missao.total_itens }} itens
+        </div>
+      </div>
+      <div class="progresso-trilha">
+        <span style="width: {{ missao.progresso_geral }}%"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================
+       CHECKLISTS
+       ============================================ -->
+  <section class="painel" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Checklists da missão</span>
+      <span class="painel-titulo-acao">{{ checklists|length }} checklist{{ checklists|length|pluralize }}</span>
+    </header>
+
+    {% if checklists %}
+      <div class="tabela-wrap painel-tabela-wrap">
+        <table class="tabela tabela-checklists-missao">
+          <thead>
+            <tr>
+              <th>Título</th>
+              <th style="width:130px;">Status</th>
+              <th style="width:220px;">Progresso</th>
+              <th style="width:170px;">Criado</th>
+              <th style="width:80px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in checklists %}
+              <tr>
+                <td>
+                  <a href="{{ c.get_absolute_url }}" class="link-forte">{{ c.titulo }}</a>
+                  {% if c.descricao %}
+                    <div class="truncar-suave">{{ c.descricao|truncatechars:70 }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="status-pill status-{{ c.status|lower }}">
+                    {{ c.get_status_display }}
+                  </span>
+                </td>
+                <td>
+                  <div class="celula-progresso">
+                    <div class="celula-progresso-barra">
+                      <span style="width: {{ c.pct }}%"></span>
+                    </div>
+                    <span class="celula-progresso-num">{{ c.feitos }}/{{ c.total }} · {{ c.pct }}%</span>
+                  </div>
+                </td>
+                <td class="mono suave">{{ c.criado_em|date:"d/m/Y H:i" }}</td>
+                <td>
+                  <a class="btn btn-mini" href="{{ c.get_absolute_url }}">Abrir</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="vazio-suave" style="margin: 12px;">
+        Nenhum checklist vinculado a esta missão ainda.
+        <a href="{% url 'checklist_novo' %}">Criar checklist</a>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- ============================================
+       DEMANDAS ABERTAS (contexto operacional)
+       ============================================ -->
+  <section class="painel" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Demandas abertas</span>
+      <a class="painel-titulo-acao" href="{% url 'demanda_lista' %}">ver todas →</a>
+    </header>
+
+    {% if demandas_recentes %}
+      <ul class="lista-demandas">
+        {% for d in demandas_recentes %}
+          <li>
+            <div>
+              <a href="{{ d.get_absolute_url }}" class="link-forte">
+                {{ d.codigo }} · {{ d.titulo }}
+              </a>
+              <div class="truncar-suave">
+                {{ d.get_tipo_display }} · {{ d.get_prioridade_display }}
+                {% if d.sistema %} · {{ d.sistema.nome }}{% endif %}
+              </div>
+            </div>
+            <div>
+              <span class="status-pill status-{{ d.status|lower }}">
+                {{ d.get_status_display }}
+              </span>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="vazio-suave" style="margin: 12px;">
+        Nenhuma demanda aberta no momento.
+      </div>
+    {% endif %}
+  </section>
+
+</div>
+
+<!-- ============================================
+     CSS
+     ============================================ -->
+<style>
+.console-missao-detail {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+/* ---- Bloco de informações ---- */
+.detail-info {
+  padding: 14px 18px;
+  display: grid;
+  gap: 14px;
+}
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+}
+.detail-rotulo {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.detail-valor {
+  font-size: .92rem;
+  color: var(--texto, #e6edf3);
+}
+.detail-bloco-texto {
+  background: rgba(0,0,0,.15);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.detail-bloco-texto p {
+  margin: 4px 0 0;
+  line-height: 1.45;
+  color: var(--texto, #e6edf3);
+}
+
+/* ---- Progresso geral ---- */
+.progresso-bloco {
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+}
+.progresso-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.progresso-topo strong {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--texto, #e6edf3);
+}
+.progresso-topo .suave {
+  margin-left: 6px;
+}
+.progresso-trilha {
+  height: 6px;
+  background: rgba(255,255,255,.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progresso-trilha span {
+  display: block;
+  height: 100%;
+  background: #64748b;
+}
+
+/* ---- Tabela de checklists ---- */
+.tabela-checklists-missao td {
+  vertical-align: middle;
+}
+.link-forte {
+  color: var(--texto, #e6edf3);
+  text-decoration: none;
+  font-weight: 500;
+}
+.link-forte:hover {
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,.35);
+  text-underline-offset: 3px;
+}
+.truncar-suave {
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 2px;
+}
+.celula-progresso {
+  display: grid;
+  gap: 4px;
+}
+.celula-progresso-barra {
+  height: 4px;
+  background: rgba(255,255,255,.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.celula-progresso-barra span {
+  display: block;
+  height: 100%;
+  background: #64748b;
+}
+.celula-progresso-num {
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+}
+
+/* ---- Demandas ---- */
+.lista-demandas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lista-demandas li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.lista-demandas li:last-child {
+  border-bottom: none;
+}
+
+/* ---- Status pills (mesmo estilo sóbrio da listagem) ---- */
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .72rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+  color: var(--texto-suave, #aab);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.status-pill.status-preparacao  { color: #d4a24c; border-color: rgba(212,162,76,.3); }
+.status-pill.status-em_operacao { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.status-pill.status-pausada     { color: #94a3b8; }
+.status-pill.status-finalizada  { color: #7f9dbf; border-color: rgba(127,157,191,.3); }
+.status-pill.status-cancelada   { color: #c47a7a; border-color: rgba(196,122,122,.3); }
+
+/* ---- Vazio ---- */
+.vazio-suave {
+  color: var(--texto-suave, #aab);
+  font-size: .85rem;
+  padding: 10px 14px;
+  background: rgba(255,255,255,.02);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.04);
+}
+.vazio-suave a {
+  color: var(--texto, #e6edf3);
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,.25);
+  text-underline-offset: 3px;
+}
+.vazio-suave a:hover {
+  text-decoration-color: rgba(255,255,255,.6);
+}
+
+.suave { color: #64748b; }
+.btn-mini { padding: 5px 10px; font-size: .78rem; }
+
+/* ---- Responsivo ---- */
+@media (max-width: 720px) {
+  .lista-demandas li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
+</style>
+
+{% endblock %}
