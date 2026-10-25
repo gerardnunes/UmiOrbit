@@ -1,8 +1,12 @@
 from django.contrib.auth import views as auth_views
+from django.http import JsonResponse
 from django.urls import path
 
 from . import views
 
+
+def saude(request):
+    return JsonResponse({"status": "ok"}, status=200)
 urlpatterns = [
     path("saude/", saude, name="saude"),
     path("login/", auth_views.LoginView.as_view(), name="login"),
