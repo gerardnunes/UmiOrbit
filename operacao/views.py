@@ -704,17 +704,19 @@ class ChecklistImportView(TrabalhadorRequiredMixin, View):
             enviado_por=request.user,
         )
 
+
         try:
-            resultado = ler_excel(importacao.arquivo.path)
+            with importacao.arquivo.open("rb") as arquivo_excel:
+                conteudo_excel = arquivo_excel.read()
+
+            resultado = ler_excel(io.BytesIO(conteudo_excel))
+
         except Exception as exc:
+            importacao.erros = f"Falha ao ler a planilha: {exc}"
+            importacao.save(update_fields=["erros"])
             messages.error(request, f"Falha ao ler a planilha: {exc}")
             return redirect(checklist)
 
-        if not resultado.linhas:
-            importacao.erros = "\n".join(resultado.erros) or "Nenhuma linha válida."
-            importacao.save()
-            messages.warning(request, "Nenhum item encontrado na planilha.")
-            return redirect(checklist)
 
         if substituir:
             checklist.itens.all().delete()

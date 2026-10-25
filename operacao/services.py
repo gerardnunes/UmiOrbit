@@ -229,17 +229,19 @@ def _pontuar_mapa(mapa: dict[int, str]) -> int:
 
 # =========================================================
 # LEITURA
-# =========================================================
-def ler_excel(caminho_arquivo) -> ResultadoImport:
+
+def ler_excel(arquivo) -> ResultadoImport:
     resultado = ResultadoImport()
 
-    # --- Abrir arquivo ---
+    # --- Abrir arquivo: aceita caminho ou arquivo em memória ---
     try:
         wb = openpyxl.load_workbook(
-            caminho_arquivo, data_only=True, read_only=True
+            arquivo, data_only=True, read_only=True
         )
     except Exception as exc:
-        resultado.erros.append(f"Não foi possível abrir o arquivo: {exc}")
+        resultado.erros.append(
+            f"Não foi possível abrir o arquivo: {exc}"
+        )
         return resultado
 
     try:
