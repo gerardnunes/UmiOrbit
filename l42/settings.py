@@ -64,6 +64,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "operacao.middleware.PrimeiroLoginMiddleware",   # <-- último
 ]
 
 ROOT_URLCONF = "l42.urls"
@@ -210,3 +211,8 @@ LOGGING = {
         },
     },
 }
+
+
+TEMPLATES[0]["OPTIONS"]["context_processors"] += [
+    "operacao.context_processors.aprovacoes_pendentes",
+]

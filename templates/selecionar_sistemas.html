@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Escolha seus sistemas{% endblock %}
+
+{% block conteudo %}
+<section class="pagina-cabecalho">
+  <h1>Quais sistemas você cobre?</h1>
+  <p class="pagina-meta">
+    Você pode mudar isso depois no seu perfil. Marque todos que se aplicam.
+  </p>
+</section>
+
+<form method="post" class="form-sistemas">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div class="form-erros">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="grid-sistemas">
+    {% for checkbox in form.sistemas %}
+      <label class="sistema-opcao">
+        {{ checkbox.tag }}
+        <span>{{ checkbox.choice_label }}</span>
+      </label>
+    {% endfor %}
+  </div>
+
+  {% if form.sistemas.errors %}
+    <div class="campo-erro">{{ form.sistemas.errors|join:", " }}</div>
+  {% endif %}
+
+  <div class="form-acoes">
+    <button class="btn-primario" type="submit">Salvar e continuar</button>
+  </div>
+</form>
+
+<style>
+.form-sistemas { max-width: 720px; margin: 24px auto; display: grid; gap: 16px; }
+.grid-sistemas {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.sistema-opcao {
+  display: flex; gap: 10px; align-items: center;
+  padding: 10px 12px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.02);
+  cursor: pointer;
+}
+.sistema-opcao:hover { background: rgba(59,130,246,.06); }
+.sistema-opcao input { accent-color: #3b82f6; }
+.form-acoes { display: flex; justify-content: flex-end; }
+.form-erros { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.35); border-radius: 8px; padding: 10px 12px; color: #f87171; }
+.campo-erro { color: #f87171; font-size: .85rem; }
+</style>
+{% endblock %}

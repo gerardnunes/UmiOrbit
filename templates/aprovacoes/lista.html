@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titulo %}Aprovações pendentes{% endblock %}
+
+{% block conteudo %}
+<section class="pagina-cabecalho">
+  <h1>Aprovações</h1>
+  <p class="pagina-meta">
+    {{ pendentes|length }} conta{{ pendentes|length|pluralize }} aguardando aprovação
+  </p>
+</section>
+
+{% if pendentes %}
+  <div class="tabela-simples">
+    <table>
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Nome</th>
+          <th>E-mail</th>
+          <th>Cargo</th>
+          <th>Desde</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pendentes %}
+          <tr>
+            <td><b>{{ p.user.username }}</b></td>
+            <td>{{ p.user.get_full_name|default:"—" }}</td>
+            <td>{{ p.user.email|default:"—" }}</td>
+            <td>{{ p.cargo|default:"—" }}</td>
+            <td>{{ p.user.date_joined|date:"d/m/Y H:i" }}</td>
+            <td class="acoes">
+              <form method="post" action="{% url 'aprovacoes_aprovar' p.pk %}">
+                {% csrf_token %}
+                <button class="btn-mini btn-ok" type="submit">Aprovar</button>
+              </form>
+              <form method="post" action="{% url 'aprovacoes_rejeitar' p.pk %}"
+                    onsubmit="return confirm('Rejeitar {{ p.user.username }}? A conta será desativada.');">
+                {% csrf_token %}
+                <button class="btn-mini btn-erro" type="submit">Rejeitar</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="tabela-vazio" style="padding:24px;">Nenhuma conta pendente. 🎉</div>
+{% endif %}
+
+{% if aprovados_recentes %}
+  <h2 style="margin-top:32px;font-size:1rem;">Aprovados recentemente</h2>
+  <div class="tabela-simples">
+    <table>
+      <thead>
+        <tr><th>Usuário</th><th>Nome</th><th>Aprovado por</th><th>Quando</th></tr>
+      </thead>
+      <tbody>
+        {% for p in aprovados_recentes %}
+          <tr>
+            <td>{{ p.user.username }}</td>
+            <td>{{ p.user.get_full_name|default:"—" }}</td>
+            <td>{{ p.aprovado_por.get_full_name|default:p.aprovado_por.username|default:"—" }}</td>
+            <td>{{ p.aprovado_em|date:"d/m/Y H:i" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+
+<style>
+.tabela-simples { overflow-x: auto; }
+.tabela-simples table { width: 100%; border-collapse: collapse; }
+.tabela-simples th, .tabela-simples td {
+  text-align: left; padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  font-size: .88rem;
+}
+.tabela-simples th { color: var(--texto-suave, #aab); font-weight: 500; text-transform: uppercase; font-size: .72rem; letter-spacing: .05em; }
+.tabela-simples td.acoes { display: flex; gap: 6px; }
+.btn-mini { padding: 6px 10px; font-size: .8rem; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+.btn-ok { background: #22c55e; color: #06210e; }
+.btn-erro { background: transparent; border-color: #ef4444; color: #ef4444; }
+</style>
+{% endblock %}

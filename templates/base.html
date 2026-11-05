@@ -8,7 +8,16 @@
 </head>
 <body>
 {% if user.is_authenticated %}
-
+{# no topo do template, para não repetir query em loop #}
+{% if user.is_superuser or user.perfil.is_diretor %}
+  <a href="{% url 'aprovacoes_lista' %}" class="menu-item">
+    Aprovações
+    {% with n=user.is_superuser|yesno:"x,x" %}{% endwith %}
+    {% if aprovacoes_pendentes_count %}
+      <span class="badge">{{ aprovacoes_pendentes_count }}</span>
+    {% endif %}
+  </a>
+{% endif %}
 <div class="bridge">
 
   <!-- ============================================
@@ -55,13 +64,7 @@
       </span>
     </a>
 
-    <div class="rail-embarcacao">
-      <span class="rail-emb-simbolo">⛴</span>
-      <div>
-        <strong>USV L42</strong>
-        <small>Umi Polaris</small>
-      </div>
-    </div>
+
 
     {% with u=request.resolver_match.url_name %}
     <nav class="rail-nav">
@@ -83,7 +86,10 @@
 
       <div class="rail-grupo">
         <div class="rail-grupo-titulo">Registro</div>
-        <a href="#"><span class="ic">⚠</span><span>Incidentes</span></a>
+ <a href="{% url 'incidente_lista' %}">
+  <span class="ic">☑</span>
+  <span>Incidentes</span>
+</a>
  <a href="{% url 'checklist_lista' %}">
   <span class="ic">☑</span>
   <span>Checklists</span>

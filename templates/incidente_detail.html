@@ -1,0 +1,661 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}{{ incidente.codigo }} · {{ incidente.titulo }}{% endblock %}
+
+{% block conteudo %}
+
+<!-- ============================================
+     CABEÇALHO
+     ============================================ -->
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">
+      <a href="{% url 'incidente_lista' %}" class="kicker-link">← Incidentes</a>
+      · {{ incidente.codigo }}
+    </div>
+    <h1>{{ incidente.titulo }}</h1>
+    <div class="pagina-meta">
+      <span class="sev-pill sev-{{ incidente.severidade|lower }}">
+        {{ incidente.get_severidade_display }}
+      </span>
+      <span class="status-pill status-{{ incidente.status|lower }}">
+        {{ incidente.get_status_display }}
+      </span>
+      <span>🏷 {{ incidente.get_tipo_display }}</span>
+      {% if incidente.bloqueante %}
+        <span class="pagina-bloqueio">🔒 Bloqueante</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <div class="detalhe-acoes">
+      <a href="{% url 'incidente_editar' incidente.pk %}" class="btn-secundario">Editar</a>
+      <a href="{% url 'incidente_apagar' incidente.pk %}" class="btn-perigo">Apagar</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     MÉTRICAS
+     ============================================ -->
+<section class="kpis">
+  <div class="kpi kpi-sev-{{ incidente.severidade|lower }}">
+    <div class="kpi-rotulo">Severidade</div>
+    <div class="kpi-valor">{{ incidente.get_severidade_display }}</div>
+    <div class="kpi-sub">
+      {% if incidente.bloqueante %}impede operar{% else %}não bloqueante{% endif %}
+    </div>
+  </div>
+
+  <div class="kpi kpi-status">
+    <div class="kpi-rotulo">Status</div>
+    <div class="kpi-valor">{{ incidente.get_status_display }}</div>
+    <div class="kpi-sub">{{ incidente.get_tipo_display }}</div>
+  </div>
+
+  <div class="kpi kpi-tempo">
+    <div class="kpi-rotulo">Ocorrido em</div>
+    <div class="kpi-valor">{{ incidente.ocorrido_em|date:"d/m" }}<small>{{ incidente.ocorrido_em|date:"H:i" }}</small></div>
+    <div class="kpi-sub">há {{ incidente.ocorrido_em|timesince }}</div>
+  </div>
+
+  <div class="kpi kpi-mttr">
+    <div class="kpi-rotulo">MTTR</div>
+    {% if incidente.mttr_horas %}
+      <div class="kpi-valor">{{ incidente.mttr_horas }}<small>h</small></div>
+      <div class="kpi-sub">resolvido em {{ incidente.resolvido_em|date:"d/m H:i" }}</div>
+    {% else %}
+      <div class="kpi-valor">—</div>
+      <div class="kpi-sub">ainda não resolvido</div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ============================================
+     BARRA DE AÇÕES DE STATUS
+     ============================================ -->
+<section class="painel painel-status-barra" style="grid-column: 1 / -1;">
+  <header class="painel-titulo">
+    <span>Mudar status</span>
+    <span class="painel-titulo-acao">STATUS</span>
+  </header>
+  <form method="post" action="{% url 'incidente_status' incidente.pk %}" class="status-form">
+    {% csrf_token %}
+    {% for chave, label in status_opcoes %}
+      <button type="submit" name="status" value="{{ chave }}"
+              class="status-btn status-btn-{{ chave }}{% if incidente.status == chave %} ativo{% endif %}"
+              {% if incidente.status == chave %}disabled{% endif %}>
+        {{ label }}
+      </button>
+    {% endfor %}
+  </form>
+</section>
+
+<!-- ============================================
+     CONSOLE PRINCIPAL
+     ============================================ -->
+<div class="console">
+
+  <!-- COLUNA ESQUERDA: descrição + anexos -->
+  <div class="detalhe-coluna-esq">
+
+    <!-- Descrição -->
+    <section class="painel">
+      <header class="painel-titulo">
+        <span>Descrição</span>
+        <span class="painel-titulo-acao">RELATO</span>
+      </header>
+      <div class="detalhe-texto">{{ incidente.descricao|linebreaks }}</div>
+    </section>
+
+    <!-- Ação tomada -->
+    {% if incidente.acao_tomada %}
+      <section class="painel">
+        <header class="painel-titulo">
+          <span>Ação tomada</span>
+          <span class="painel-titulo-acao">MITIGAÇÃO</span>
+        </header>
+        <div class="detalhe-texto">{{ incidente.acao_tomada|linebreaks }}</div>
+      </section>
+    {% endif %}
+
+    <!-- Causa provável -->
+    {% if incidente.causa_provavel %}
+      <section class="painel">
+        <header class="painel-titulo">
+          <span>Causa provável</span>
+          <span class="painel-titulo-acao">HIPÓTESE</span>
+        </header>
+        <div class="detalhe-texto">{{ incidente.causa_provavel|linebreaks }}</div>
+      </section>
+    {% endif %}
+
+    <!-- Anexos -->
+    <section class="painel">
+      <header class="painel-titulo">
+        <span>Anexos</span>
+        <span class="painel-titulo-acao">📎 {{ incidente.anexos.count }}</span>
+      </header>
+
+      {% if incidente.anexos.all %}
+        <div class="anexos-grid">
+          {% for a in incidente.anexos.all %}
+            <div class="anexo-card">
+              <a href="{{ a.imagem.url }}" target="_blank" class="anexo-img-link">
+                <img src="{{ a.imagem.url }}" alt="{{ a.legenda|default:'' }}" class="anexo-img">
+              </a>
+              <div class="anexo-info">
+                {% if a.legenda %}<strong>{{ a.legenda|truncatechars:40 }}</strong>{% endif %}
+                <small>
+                  {% if a.enviado_por %}{{ a.enviado_por.username }} · {% endif %}
+                  {{ a.enviado_em|date:"d/m H:i" }}
+                </small>
+              </div>
+              <form method="post"
+                    action="{% url 'incidente_anexo_remover' incidente.pk a.pk %}"
+                    class="anexo-remover"
+                    onsubmit="return confirm('Remover este anexo?');">
+                {% csrf_token %}
+                <button type="submit" title="Remover anexo">✕</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="tabela-vazio" style="padding:20px;">Nenhum anexo ainda.</div>
+      {% endif %}
+
+      <div class="anexo-upload">
+        <header class="anexo-upload-titulo">Adicionar anexo</header>
+        <form method="post"
+              action="{% url 'incidente_anexar' incidente.pk %}"
+              enctype="multipart/form-data"
+              class="anexo-upload-form">
+          {% csrf_token %}
+          <div class="campo">
+            <label for="{{ anexo_form.imagem.id_for_label }}">Imagem</label>
+            {{ anexo_form.imagem }}
+          </div>
+          <div class="campo">
+            <label for="{{ anexo_form.legenda.id_for_label }}">Legenda (opcional)</label>
+            {{ anexo_form.legenda }}
+          </div>
+          <button type="submit" class="btn-primario">Enviar anexo</button>
+        </form>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- COLUNA DIREITA: info + timeline + comentário -->
+  <div class="detalhe-coluna-dir">
+
+    <!-- Informações -->
+    <section class="painel">
+      <header class="painel-titulo">
+        <span>Informações</span>
+        <span class="painel-titulo-acao">INFO</span>
+      </header>
+      <ul class="leitura">
+        <li><span>Código</span><b class="mono">{{ incidente.codigo }}</b></li>
+        <li><span>Tipo</span><b>{{ incidente.get_tipo_display }}</b></li>
+        <li><span>Severidade</span><b>{{ incidente.get_severidade_display }}</b></li>
+        <li><span>Status</span><b>{{ incidente.get_status_display }}</b></li>
+        {% if incidente.embarcacao %}
+          <li><span>Embarcação</span><b>{{ incidente.embarcacao }}</b></li>
+        {% endif %}
+        {% if incidente.sistema %}
+          <li><span>Sistema</span><b>{{ incidente.sistema }}</b></li>
+        {% endif %}
+        {% if incidente.local %}
+          <li><span>Local</span><b>{{ incidente.local }}</b></li>
+        {% endif %}
+        <li>
+          <span>Responsável</span>
+          <b>
+            {% if incidente.responsavel %}
+              {{ incidente.responsavel.get_full_name|default:incidente.responsavel.username }}
+            {% else %}—{% endif %}
+          </b>
+        </li>
+        <li><span>Criado por</span><b>{{ incidente.criado_por.username|default:"—" }}</b></li>
+        <li><span>Criado em</span><b class="mono">{{ incidente.criado_em|date:"d/m/Y H:i" }}</b></li>
+        <li><span>Ocorrido em</span><b class="mono">{{ incidente.ocorrido_em|date:"d/m/Y H:i" }}</b></li>
+        {% if incidente.resolvido_em %}
+          <li><span>Resolvido em</span><b class="mono">{{ incidente.resolvido_em|date:"d/m/Y H:i" }}</b></li>
+        {% endif %}
+      </ul>
+    </section>
+
+    <!-- Comentário -->
+    <section class="painel">
+      <header class="painel-titulo">
+        <span>Adicionar comentário</span>
+        <span class="painel-titulo-acao">💬</span>
+      </header>
+      <form method="post" action="{% url 'incidente_comentar' incidente.pk %}" class="comentario-form">
+        {% csrf_token %}
+        {{ evento_form.texto }}
+        <button type="submit" class="btn-primario">Comentar</button>
+      </form>
+    </section>
+
+    <!-- Timeline -->
+    <section class="painel">
+      <header class="painel-titulo">
+        <span>Histórico</span>
+        <span class="painel-titulo-acao">LOG</span>
+      </header>
+      <ul class="timeline">
+        {% for ev in incidente.eventos.all %}
+          <li class="timeline-item timeline-{{ ev.tipo }}">
+            <span class="timeline-icone">
+              {% if ev.tipo == "criado" %}🆕
+              {% elif ev.tipo == "comentario" %}💬
+              {% elif ev.tipo == "status" %}🔄
+              {% elif ev.tipo == "severidade" %}⚠
+              {% elif ev.tipo == "responsavel" %}👤
+              {% elif ev.tipo == "anexo" %}📎
+              {% else %}•{% endif %}
+            </span>
+            <div class="timeline-conteudo">
+              <div class="timeline-topo">
+                <strong>{{ ev.get_tipo_display }}</strong>
+                <span class="mono timeline-hora">{{ ev.criado_em|date:"d/m H:i" }}</span>
+              </div>
+              <small>
+                {% if ev.texto %}{{ ev.texto }}{% endif %}
+                {% if ev.autor %} · {{ ev.autor.get_full_name|default:ev.autor.username }}{% endif %}
+              </small>
+            </div>
+          </li>
+        {% empty %}
+          <li class="tabela-vazio">Sem eventos registrados.</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+  </div>
+</div>
+
+<!-- ============================================
+     CSS
+     ============================================ -->
+<style>
+/* ---- Cabeçalho ---- */
+.kicker-link {
+  color: var(--texto-suave, #aab);
+  text-decoration: none;
+}
+.kicker-link:hover { color: #60a5fa; }
+
+.detalhe-acoes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- Layout 2 colunas ---- */
+.detalhe-coluna-esq,
+.detalhe-coluna-dir {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.detalhe-coluna-esq { grid-column: span 2; }
+
+@media (max-width: 960px) {
+  .detalhe-coluna-esq,
+  .detalhe-coluna-dir { grid-column: 1 / -1; }
+}
+
+/* ---- KPIs (mesmo estilo da lista) ---- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.kpi {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: 3px solid #3b82f6;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.kpi-sev-critico { border-left-color: #ef4444; }
+.kpi-sev-alto    { border-left-color: #f59e0b; }
+.kpi-sev-medio   { border-left-color: #eab308; }
+.kpi-sev-baixo   { border-left-color: #22c55e; }
+.kpi-status      { border-left-color: #60a5fa; }
+.kpi-tempo       { border-left-color: #a78bfa; }
+.kpi-mttr        { border-left-color: #22c55e; }
+
+.kpi-rotulo {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  margin-bottom: 4px;
+}
+.kpi-valor {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.kpi-valor small {
+  font-size: .8rem;
+  font-weight: 400;
+  color: var(--texto-suave, #aab);
+  margin-left: 3px;
+}
+.kpi-sub {
+  font-size: .72rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 4px;
+}
+
+/* ---- Badges ---- */
+.sev-pill,
+.status-pill {
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sev-pill.sev-critico { background: rgba(239,68,68,.2);  color: #f87171; }
+.sev-pill.sev-alto    { background: rgba(245,158,11,.2); color: #fbbf24; }
+.sev-pill.sev-medio   { background: rgba(234,179,8,.2);  color: #facc15; }
+.sev-pill.sev-baixo   { background: rgba(34,197,94,.2);  color: #4ade80; }
+
+.status-pill.status-aberto          { background: rgba(245,158,11,.15); color: #fbbf24; }
+.status-pill.status-em_analise      { background: rgba(59,130,246,.15); color: #60a5fa; }
+.status-pill.status-em_reparo       { background: rgba(168,85,247,.15); color: #c084fc; }
+.status-pill.status-aguardando_peca { background: rgba(148,163,184,.15); color: #cbd5e1; }
+.status-pill.status-resolvido       { background: rgba(34,197,94,.15);  color: #4ade80; }
+.status-pill.status-cancelado       { background: rgba(239,68,68,.15);  color: #f87171; }
+
+/* ---- Botões ---- */
+.btn-primario,
+.btn-secundario,
+.btn-perigo {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: .85rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primario    { background: #3b82f6; color: #fff; }
+.btn-primario:hover { background: #2563eb; }
+.btn-secundario  {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.15);
+  color: var(--texto, #e6edf3);
+}
+.btn-secundario:hover { background: rgba(255,255,255,.08); }
+.btn-perigo      {
+  background: rgba(239,68,68,.12);
+  border-color: rgba(239,68,68,.4);
+  color: #f87171;
+}
+.btn-perigo:hover { background: rgba(239,68,68,.22); }
+
+/* ---- Texto longo ---- */
+.detalhe-texto {
+  padding: 16px;
+  font-size: .88rem;
+  line-height: 1.6;
+  color: var(--texto, #e6edf3);
+  white-space: normal;
+}
+.detalhe-texto p { margin: 0 0 10px; }
+.detalhe-texto p:last-child { margin-bottom: 0; }
+
+/* ---- Barra de status ---- */
+.status-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px;
+}
+.status-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+  color: var(--texto, #e6edf3);
+  font-size: .82rem;
+  cursor: pointer;
+  transition: all .15s;
+}
+.status-btn:hover:not(:disabled) {
+  background: rgba(96,165,250,.15);
+  border-color: #60a5fa;
+}
+.status-btn.ativo {
+  cursor: default;
+  opacity: .6;
+}
+.status-btn-aberto            { border-color: rgba(245,158,11,.4); color: #fbbf24; }
+.status-btn-em_analise        { border-color: rgba(59,130,246,.4); color: #60a5fa; }
+.status-btn-em_reparo         { border-color: rgba(168,85,247,.4); color: #c084fc; }
+.status-btn-aguardando_peca   { border-color: rgba(148,163,184,.4); color: #cbd5e1; }
+.status-btn-resolvido         { border-color: rgba(34,197,94,.4);  color: #4ade80; }
+.status-btn-cancelado         { border-color: rgba(239,68,68,.4);  color: #f87171; }
+
+/* ---- Anexos ---- */
+.anexos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+.anexo-card {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(255,255,255,.08);
+  transition: border-color .15s;
+}
+.anexo-card:hover { border-color: #60a5fa; }
+.anexo-img-link { display: block; }
+.anexo-img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+.anexo-info {
+  padding: 6px 8px;
+  display: grid;
+  gap: 2px;
+  background: rgba(0,0,0,.35);
+}
+.anexo-info strong {
+  font-size: .78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.anexo-info small {
+  font-size: .66rem;
+  color: var(--texto-suave, #aab);
+}
+.anexo-remover {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.anexo-remover button {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(239,68,68,.85);
+  color: #fff;
+  font-size: .8rem;
+  cursor: pointer;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.anexo-remover button:hover { background: #ef4444; }
+
+.anexo-upload {
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  background: rgba(255,255,255,.02);
+}
+.anexo-upload-titulo {
+  font-size: .78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  margin-bottom: 10px;
+}
+.anexo-upload-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+@media (max-width: 720px) {
+  .anexo-upload-form { grid-template-columns: 1fr; }
+}
+
+/* ---- Campos (mesmo estilo do form) ---- */
+.campo { display: grid; gap: 4px; }
+.campo label {
+  font-size: .72rem;
+  font-weight: 500;
+  color: var(--texto-suave, #aab);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: var(--texto, #e6edf3);
+  font-size: .85rem;
+  font-family: inherit;
+}
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+  background: rgba(0,0,0,.35);
+}
+
+/* ---- Comentário ---- */
+.comentario-form {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.comentario-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: var(--texto, #e6edf3);
+  font-size: .85rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 70px;
+}
+.comentario-form textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+.comentario-form button {
+  justify-self: flex-end;
+}
+
+/* ---- Informações (lista) ---- */
+.leitura {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+}
+.leitura li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  font-size: .82rem;
+}
+.leitura li:last-child { border-bottom: none; }
+.leitura span { color: var(--texto-suave, #aab); }
+.leitura b { color: var(--texto, #e6edf3); text-align: right; }
+
+/* ---- Timeline ---- */
+.timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  align-items: flex-start;
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-icone {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.05);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.timeline-criado     .timeline-icone { background: rgba(34,197,94,.15); }
+.timeline-status     .timeline-icone { background: rgba(96,165,250,.15); }
+.timeline-severidade .timeline-icone { background: rgba(245,158,11,.15); }
+.timeline-responsavel .timeline-icone { background: rgba(96,165,250,.15); }
+.timeline-anexo      .timeline-icone { background: rgba(168,85,247,.15); }
+.timeline-comentario .timeline-icone { background: rgba(255,255,255,.06); }
+
+.timeline-conteudo { flex: 1; min-width: 0; }
+.timeline-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.timeline-topo strong {
+  font-size: .85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-hora {
+  font-size: .7rem;
+  color: var(--texto-suave, #aab);
+  flex-shrink: 0;
+}
+.timeline-conteudo small {
+  display: block;
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+</style>
+
+{% endblock %}

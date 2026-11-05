@@ -1,7 +1,6 @@
-
 {% load static %}
 
-{% block titulo %}Entrar{% endblock %}
+{% block titulo %}{% endblock %}
 
 {% block conteudo %}
 <link rel="stylesheet" href="{% static 'css/app.css' %}">
@@ -12,40 +11,159 @@
 
         <img class="login-barco" src="{% static 'img/barco-l42.png' %}" alt="Barco USV L42">
 
-        <h1>L42</h1>
+        <h1>ORBIT SYS</h1>
 
         <p>
-            Gestão do barco autônomo. Entre com seu usuário.
+            
         </p>
 
-        <form method="post">
+        {# ----- Mensagens do Django (ex.: conta criada, sessão expirada) ----- #}
+        {% if messages %}
+            <div class="mensagens-login">
+                {% for m in messages %}
+                    <div class="alerta alerta-{{ m.tags|default:'info' }}">{{ m }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {# ----- Erro geral do form (credenciais inválidas) ----- #}
+        {% if form.non_field_errors %}
+            <div class="alerta alerta-erro" role="alert">
+                {% for erro in form.non_field_errors %}
+                    <div>{{ erro }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" autocomplete="on">
             {% csrf_token %}
 
-            {% if form.non_field_errors %}
-                <div class="alerta">
-                    Usuário ou senha incorretos.
-                </div>
-            {% endif %}
-
             <div class="campo">
-                <label for="id_username">Usuário</label>
-                {{ form.username }}
+                <label for="{{ form.username.id_for_label }}">Usuário</label>
+                <input
+                    type="text"
+                    name="{{ form.username.name }}"
+                    id="{{ form.username.id_for_label }}"
+                    value="{{ form.username.value|default:'' }}"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    spellcheck="false"
+                    {% if form.username.errors %}aria-invalid="true"{% endif %}
+                    autofocus
+                    required
+                >
+                {% if form.username.errors %}
+                    <small class="campo-erro">{{ form.username.errors|join:", " }}</small>
+                {% endif %}
             </div>
 
             <div class="campo">
-                <label for="id_password">Senha</label>
-                {{ form.password }}
+                <label for="{{ form.password.id_for_label }}">Senha</label>
+                <input
+                    type="password"
+                    name="{{ form.password.name }}"
+                    id="{{ form.password.id_for_label }}"
+                    autocomplete="current-password"
+                    {% if form.password.errors %}aria-invalid="true"{% endif %}
+                    required
+                >
+                {% if form.password.errors %}
+                    <small class="campo-erro">{{ form.password.errors|join:", " }}</small>
+                {% endif %}
             </div>
 
-            <input type="hidden" name="next" value="{{ next }}">
+            <input type="hidden" name="next" value="{{ next|default:'' }}">
 
-            <button class="btn" type="submit">
-                Entrar
-            </button>
+            {# ----- Linha dos botões ----- #}
+            <div class="login-acoes">
+                <button class="btn" type="submit">
+                    Entrar
+                </button>
+
+                <a class="btn btn-secundario" href="{% url 'cadastro' %}">
+                    Criar conta
+                </a>
+            </div>
         </form>
+
+        {# ----- Link secundário (opcional) ----- #}
+        {% url 'password_reset' as url_reset %}
+        {% if url_reset %}
+            <p class="login-ajuda">
+                <a href="{{ url_reset }}">Esqueci minha senha</a>
+            </p>
+        {% endif %}
 
     </div>
 
 </div>
+
+{# ----- Estilos extras só para esta tela ----- #}
+<style>
+    .mensagens-login { display: grid; gap: 8px; margin-bottom: 12px; }
+
+    .alerta {
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: .85rem;
+        border: 1px solid transparent;
+    }
+    .alerta-erro, .alerta-error {
+        background: rgba(239, 68, 68, .12);
+        border-color: rgba(239, 68, 68, .45);
+        color: #f87171;
+    }
+    .alerta-success {
+        background: rgba(34, 197, 94, .12);
+        border-color: rgba(34, 197, 94, .45);
+        color: #4ade80;
+    }
+    .alerta-info, .alerta-warning {
+        background: rgba(245, 158, 11, .1);
+        border-color: rgba(245, 158, 11, .4);
+        color: #fbbf24;
+    }
+
+    .campo-erro {
+        color: #f87171;
+        font-size: .78rem;
+        margin-top: 4px;
+        display: block;
+    }
+
+    .login-acoes {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 6px;
+    }
+    .login-acoes .btn { width: 100%; text-align: center; }
+
+    .btn-secundario {
+        background: rgba(255, 255, 255, .04);
+        border: 1px solid rgba(255, 255, 255, .15);
+        color: var(--texto, #e6edf3);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: background .15s;
+    }
+    .btn-secundario:hover { background: rgba(255, 255, 255, .08); }
+
+    .login-ajuda {
+        text-align: center;
+        margin-top: 14px;
+        font-size: .8rem;
+    }
+    .login-ajuda a { color: var(--texto-suave, #aab); text-decoration: none; }
+    .login-ajuda a:hover { color: var(--texto, #e6edf3); text-decoration: underline; }
+
+    @media (max-width: 420px) {
+        .login-acoes { grid-template-columns: 1fr; }
+    }
+</style>
 {% endblock %}
-```

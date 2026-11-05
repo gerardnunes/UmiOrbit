@@ -1,113 +1,260 @@
 {% extends "base.html" %}
-
-{% block titulo %}Nova missão{% endblock %}
+{% block titulo %}{% if object %}Editar missão{% else %}Nova missão{% endif %}{% endblock %}
 
 {% block conteudo %}
 
-<div class="cabecalho">
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Operação · missões</div>
+    <h1>
+      {% if object %}Editar missão{% else %}Nova missão{% endif %}
+    </h1>
+    <p class="pagina-meta">
+      {% if object %}
+        Alterando missão existente.
+      {% else %}
+        Cadastre uma nova missão operacional.
+      {% endif %}
+    </p>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <a href="{% url 'missoes' %}" class="btn-secundario">← Voltar</a>
+  </div>
+</section>
 
-    <div>
-        <div class="suave">
-            OPERAÇÃO / MISSÕES
-        </div>
+<form method="post" class="form-missao" novalidate>
+  {% csrf_token %}
 
-        <h1>Nova missão</h1>
-
-        <p class="suave">
-            Cadastre uma nova missão operacional do L42.
-        </p>
+  {% if form.non_field_errors %}
+    <div class="form-erros" role="alert">
+      {% for erro in form.non_field_errors %}<div>{{ erro }}</div>{% endfor %}
     </div>
+  {% endif %}
 
-    <div class="acoes">
-        <a href="{% url 'missoes' %}" class="btn sec">
-            ← Voltar
-        </a>
+  <!-- ==================================================
+       SISTEMA (obrigatório — primeiro campo)
+       ================================================== -->
+  <fieldset class="form-bloco">
+    <legend>
+      <span class="form-bloco-num">1</span>
+      Sistema / Embarcação
+    </legend>
+
+    <div class="campo">
+      <label for="{{ form.sistema.id_for_label }}">
+        Sistema <b>*</b>
+      </label>
+      {{ form.sistema }}
+      {% if form.sistema.errors %}
+        <div class="campo-erro">{{ form.sistema.errors|join:", " }}</div>
+      {% endif %}
+      <small class="campo-ajuda">
+        Toda missão pertence a uma embarcação/veículo. Se você só cobre um
+        sistema, ele já vem selecionado.
+      </small>
     </div>
+  </fieldset>
 
-</div>
+  <!-- ==================================================
+       DADOS DA MISSÃO
+       ================================================== -->
+  <fieldset class="form-bloco">
+    <legend>
+      <span class="form-bloco-num">2</span>
+      Dados da missão
+    </legend>
 
+    <div class="form-grid">
+      <div class="campo campo-full">
+        <label for="{{ form.titulo.id_for_label }}">
+          Título <b>*</b>
+        </label>
+        {{ form.titulo }}
+        {% if form.titulo.errors %}
+          <div class="campo-erro">{{ form.titulo.errors|join:", " }}</div>
+        {% endif %}
+      </div>
 
-<form method="post">
+      <div class="campo">
+        <label for="{{ form.local.id_for_label }}">Local de operação</label>
+        {{ form.local }}
+        {% if form.local.errors %}
+          <div class="campo-erro">{{ form.local.errors|join:", " }}</div>
+        {% endif %}
+      </div>
 
-    {% csrf_token %}
+      <div class="campo">
+        <label for="{{ form.responsavel.id_for_label }}">Responsável</label>
+        {{ form.responsavel }}
+        {% if form.responsavel.errors %}
+          <div class="campo-erro">{{ form.responsavel.errors|join:", " }}</div>
+        {% endif %}
+      </div>
 
+      <div class="campo">
+        <label for="{{ form.status.id_for_label }}">Status</label>
+        {{ form.status }}
+        {% if form.status.errors %}
+          <div class="campo-erro">{{ form.status.errors|join:", " }}</div>
+        {% endif %}
+      </div>
 
-    <section class="card">
+      <div class="campo">
+        <label for="{{ form.inicio_previsto.id_for_label }}">Início previsto</label>
+        {{ form.inicio_previsto }}
+        {% if form.inicio_previsto.errors %}
+          <div class="campo-erro">{{ form.inicio_previsto.errors|join:", " }}</div>
+        {% endif %}
+      </div>
 
-        <h2>Dados da missão</h2>
+      <div class="campo campo-full">
+        <label for="{{ form.objetivo.id_for_label }}">Objetivo</label>
+        {{ form.objetivo }}
+        {% if form.objetivo.errors %}
+          <div class="campo-erro">{{ form.objetivo.errors|join:", " }}</div>
+        {% endif %}
+      </div>
 
-        <div class="grid g2">
-
-            <div class="campo">
-                {{ form.titulo.label_tag }}
-                {{ form.titulo }}
-
-                {% for error in form.titulo.errors %}
-                    <div class="erro">{{ error }}</div>
-                {% endfor %}
-            </div>
-
-
-            <div class="campo">
-                {{ form.local.label_tag }}
-                {{ form.local }}
-
-                {% for error in form.local.errors %}
-                    <div class="erro">{{ error }}</div>
-                {% endfor %}
-            </div>
-
-
-            <div class="campo">
-                {{ form.responsavel.label_tag }}
-                {{ form.responsavel }}
-            </div>
-
-
-            <div class="campo">
-                {{ form.status.label_tag }}
-                {{ form.status }}
-            </div>
-
-
-            <div class="campo">
-                {{ form.inicio_previsto.label_tag }}
-                {{ form.inicio_previsto }}
-            </div>
-
-        </div>
-
-
-        <div class="campo">
-
-            {{ form.objetivo.label_tag }}
-            {{ form.objetivo }}
-
-        </div>
-
-
-        <div class="campo">
-
-            {{ form.observacoes.label_tag }}
-            {{ form.observacoes }}
-
-        </div>
-
-    </section>
-
-
-    <div class="acoes secao">
-
-        <a href="{% url 'missoes' %}" class="btn sec">
-            Cancelar
-        </a>
-
-        <button type="submit" class="btn">
-            Criar missão
-        </button>
-
+      <div class="campo campo-full">
+        <label for="{{ form.observacoes.id_for_label }}">Observações</label>
+        {{ form.observacoes }}
+        {% if form.observacoes.errors %}
+          <div class="campo-erro">{{ form.observacoes.errors|join:", " }}</div>
+        {% endif %}
+      </div>
     </div>
+  </fieldset>
 
+  <!-- ==================================================
+       AÇÕES
+       ================================================== -->
+  <div class="form-acoes">
+    <a href="{% url 'missoes' %}" class="btn-secundario">Cancelar</a>
+    <button type="submit" class="btn-primario">
+      {% if object %}Salvar alterações{% else %}Criar missão{% endif %}
+    </button>
+  </div>
 </form>
+
+<style>
+.form-missao {
+  max-width: 880px;
+  margin: 0 auto 32px;
+  display: grid;
+  gap: 16px;
+}
+.form-bloco {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: rgba(255,255,255,.02);
+}
+.form-bloco legend {
+  padding: 0 10px;
+  font-size: .82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--texto, #e6edf3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-bloco-num {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(96,165,250,.2);
+  color: #60a5fa;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.campo-full { grid-column: 1 / -1; }
+.campo { display: grid; gap: 6px; }
+.campo label {
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--texto-suave, #aab);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.campo label b { color: #f87171; }
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: var(--texto, #e6edf3);
+  font-size: .88rem;
+  font-family: inherit;
+}
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+  background: rgba(0,0,0,.35);
+}
+.campo textarea { min-height: 90px; resize: vertical; line-height: 1.45; }
+.campo-ajuda {
+  font-size: .72rem;
+  color: var(--texto-suave, #8b95a5);
+  line-height: 1.4;
+}
+.campo-erro {
+  font-size: .78rem;
+  color: #f87171;
+  font-weight: 500;
+}
+.form-erros {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.4);
+  color: #f87171;
+  font-size: .85rem;
+}
+.form-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 4px;
+}
+.form-acoes .btn-primario,
+.form-acoes .btn-secundario {
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-size: .88rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+}
+.form-acoes .btn-primario {
+  background: #3b82f6;
+  color: #fff;
+}
+.form-acoes .btn-primario:hover { background: #2563eb; }
+.form-acoes .btn-secundario {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.15);
+  color: var(--texto, #e6edf3);
+}
+.form-acoes .btn-secundario:hover { background: rgba(255,255,255,.08); }
+</style>
 
 {% endblock %}

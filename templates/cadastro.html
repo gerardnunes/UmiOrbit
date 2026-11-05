@@ -1,0 +1,293 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Criar conta · L42</title>
+<style>
+  :root {
+    --bg: #0f1720;
+    --card: #16202c;
+    --card-2: #1d2a3a;
+    --linha: rgba(255,255,255,.08);
+    --texto: #e6edf3;
+    --suave: #93a4b8;
+    --erro: #f87171;
+    --ok: #4ade80;
+    --primario: #3b82f6;
+    --primario-hover: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--texto);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: grid;
+    place-items: center;
+    padding: 32px 16px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 460px;
+    background: var(--card);
+    border: 1px solid var(--linha);
+    border-radius: 16px;
+    padding: 28px 26px 24px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+
+  .card-topo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .card-topo img {
+    width: 96px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .card-topo h1 {
+    margin: 0;
+    font-size: 1.35rem;
+    letter-spacing: .06em;
+  }
+  .card-topo p {
+    margin: 0;
+    font-size: .85rem;
+    color: var(--suave);
+    line-height: 1.45;
+  }
+
+  .alerta {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: .85rem;
+    border: 1px solid transparent;
+    margin-bottom: 14px;
+  }
+  .alerta-erro {
+    background: rgba(239,68,68,.12);
+    border-color: rgba(239,68,68,.45);
+    color: var(--erro);
+  }
+  .alerta-erro ul { margin: 0; padding-left: 16px; }
+
+  form { display: grid; gap: 14px; }
+
+  .campo { display: grid; gap: 6px; }
+  .campo label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--suave);
+  }
+  .campo label b { color: var(--erro); }
+
+  .campo input {
+    padding: 11px 12px;
+    border-radius: 9px;
+    border: 1px solid var(--linha);
+    background: rgba(0,0,0,.28);
+    color: var(--texto);
+    font: inherit;
+    font-size: .92rem;
+    transition: border-color .15s, background .15s;
+  }
+  .campo input:focus {
+    outline: none;
+    border-color: var(--primario);
+    background: rgba(0,0,0,.38);
+  }
+  .campo input[aria-invalid="true"] { border-color: var(--erro); }
+
+  .ajuda {
+    font-size: .72rem;
+    color: var(--suave);
+    line-height: 1.4;
+  }
+  .erro-campo {
+    font-size: .78rem;
+    color: var(--erro);
+  }
+
+  .linha-dupla {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 420px) {
+    .linha-dupla { grid-template-columns: 1fr; }
+  }
+
+  .acoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  @media (max-width: 420px) {
+    .acoes { grid-template-columns: 1fr; }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 16px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .15s, transform .1s;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primario { background: var(--primario); color: #fff; }
+  .btn-primario:hover { background: var(--primario-hover); }
+  .btn-secundario {
+    background: rgba(255,255,255,.04);
+    border-color: rgba(255,255,255,.16);
+    color: var(--texto);
+  }
+  .btn-secundario:hover { background: rgba(255,255,255,.08); }
+
+  .rodape {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--linha);
+    text-align: center;
+    font-size: .82rem;
+    color: var(--suave);
+  }
+  .rodape a { color: #60a5fa; text-decoration: none; }
+  .rodape a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <div class="card-topo">
+    <img src="{% static 'img/barco-l42.png' %}" alt="USV L42">
+    <h1>Criar conta</h1>
+    <p>
+      Depois de criar, um <b>diretor</b> precisa aprovar seu acesso
+      antes de você começar.
+    </p>
+  </div>
+
+  {% if form.non_field_errors %}
+    <div class="alerta alerta-erro" role="alert">
+      <ul>
+        {% for erro in form.non_field_errors %}<li>{{ erro }}</li>{% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="linha-dupla">
+      <div class="campo">
+        <label for="{{ form.first_name.id_for_label }}">
+          Nome {% if form.first_name.field.required %}<b>*</b>{% endif %}
+        </label>
+        {{ form.first_name }}
+        {% if form.first_name.errors %}
+          <div class="erro-campo">{{ form.first_name.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.last_name.id_for_label }}">
+          Sobrenome {% if form.last_name.field.required %}<b>*</b>{% endif %}
+        </label>
+        {{ form.last_name }}
+        {% if form.last_name.errors %}
+          <div class="erro-campo">{{ form.last_name.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="campo">
+      <label for="{{ form.username.id_for_label }}">
+        Usuário (login) <b>*</b>
+      </label>
+      {{ form.username }}
+      <small class="ajuda">
+        Letras, números, ponto ou underline. Será seu login.
+      </small>
+      {% if form.username.errors %}
+        <div class="erro-campo">{{ form.username.errors|join:", " }}</div>
+      {% endif %}
+    </div>
+
+    <div class="campo">
+      <label for="{{ form.email.id_for_label }}">
+        E-mail {% if form.email.field.required %}<b>*</b>{% endif %}
+      </label>
+      {{ form.email }}
+      {% if form.email.errors %}
+        <div class="erro-campo">{{ form.email.errors|join:", " }}</div>
+      {% endif %}
+    </div>
+
+    <div class="linha-dupla">
+      <div class="campo">
+        <label for="{{ form.password1.id_for_label }}">Senha <b>*</b></label>
+        {{ form.password1 }}
+        <small class="ajuda">Mínimo 8 caracteres.</small>
+        {% if form.password1.errors %}
+          <div class="erro-campo">{{ form.password1.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.password2.id_for_label }}">Confirmar <b>*</b></label>
+        {{ form.password2 }}
+        {% if form.password2.errors %}
+          <div class="erro-campo">{{ form.password2.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="linha-dupla">
+      <div class="campo">
+        <label for="{{ form.cargo.id_for_label }}">Cargo / função</label>
+        {{ form.cargo }}
+        {% if form.cargo.errors %}
+          <div class="erro-campo">{{ form.cargo.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.telefone.id_for_label }}">Telefone</label>
+        {{ form.telefone }}
+        {% if form.telefone.errors %}
+          <div class="erro-campo">{{ form.telefone.errors|join:", " }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="acoes">
+      <button class="btn btn-primario" type="submit">Criar conta</button>
+      <a class="btn btn-secundario" href="{% url 'login' %}">Já tenho conta</a>
+    </div>
+  </form>
+
+  <div class="rodape">
+    Já tem conta? <a href="{% url 'login' %}">Entrar →</a>
+  </div>
+
+</div>
+
+</body>
+</html>

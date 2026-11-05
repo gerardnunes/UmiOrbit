@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titulo %}Aguardando aprovação{% endblock %}
+
+{% block conteudo %}
+<section class="pagina-cabecalho">
+  <h1>Aguardando aprovação</h1>
+</section>
+
+<div class="aviso-aprovacao">
+  <div class="icone">⏳</div>
+  <p>
+    Sua conta foi criada, mas ainda <b>não foi aprovada</b> por um diretor.
+    Assim que for liberada, você poderá escolher os sistemas que cobre e começar.
+  </p>
+  <p class="dica">Fique tranquilo(a) — você não precisa fazer mais nada agora.</p>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button class="btn-secundario" type="submit">Sair</button>
+  </form>
+</div>
+
+<style>
+.aviso-aprovacao {
+  max-width: 560px; margin: 40px auto; padding: 32px 24px;
+  background: rgba(245,158,11,.06);
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 14px; text-align: center;
+}
+.aviso-aprovacao .icone { font-size: 2.4rem; margin-bottom: 8px; }
+.aviso-aprovacao p { line-height: 1.55; }
+.aviso-aprovacao .dica { color: var(--texto-suave, #aab); font-size: .85rem; }
+</style>
+{% endblock %}

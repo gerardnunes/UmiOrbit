@@ -10,9 +10,11 @@ Recursos:
 - Ignora linhas vazias.
 - Retorna diagnóstico legível em caso de erro.
 
-IMPORTANTE: `ChecklistItem.sistema` é CharField (texto livre),
-então a planilha NÃO cria objetos Sistema. O texto da coluna
-"Sistema" é copiado direto pro item.
+IMPORTANTE: `ChecklistItem.sistema` é FK para `Sistema`.
+Os itens importados **herdam o sistema do checklist**
+(não da coluna "Sistema" da planilha). A coluna "Sistema"
+da planilha é **detectada e ignorada** — serve apenas para
+não confundir o parser com planilhas antigas.
 """
 
 from __future__ import annotations
@@ -78,7 +80,8 @@ CABECALHOS = {
     "description": "descricao",
     "notes": "descricao",
 
-    # Sistema
+    # Sistema (detectado, mas IGNORADO no aplicar_import —
+    # o sistema do item é sempre o sistema do checklist)
     "sistema": "sistema",
     "sistemas": "sistema",
     "equipamento": "sistema",
@@ -155,9 +158,11 @@ class LinhaLida:
     ordem: int
     titulo: str
     descricao: str = ""
-    sistema_nome: str = ""
     prioridade: str = ChecklistItem.Prioridade.MEDIA
     responsavel_username: str = ""
+    # sistema_nome é lido por compatibilidade, mas NÃO é usado
+    # no aplicar_import (o sistema do item = sistema do checklist).
+    sistema_nome: str = ""
     erro: str = ""
 
 
@@ -204,18 +209,12 @@ def _localizar_cabecalho(linha: Iterable) -> dict[int, str]:
             continue
         if chave in CABECALHOS:
             campo = CABECALHOS[chave]
-            # Não deixa a mesma coluna interna ser sobrescrita
-            # (ex.: duas colunas viram 'titulo' → mantém a primeira).
             if campo not in mapa.values():
                 mapa[idx] = campo
     return mapa
 
 
 def _pontuar_mapa(mapa: dict[int, str]) -> int:
-    """
-    Dá uma pontuação pro cabeçalho candidato.
-    'Título' vale muito mais que 'Sistema' ou 'Ordem'.
-    """
     pesos = {
         "titulo": 10,
         "descricao": 4,
@@ -229,11 +228,10 @@ def _pontuar_mapa(mapa: dict[int, str]) -> int:
 
 # =========================================================
 # LEITURA
-
+# =========================================================
 def ler_excel(arquivo) -> ResultadoImport:
     resultado = ResultadoImport()
 
-    # --- Abrir arquivo: aceita caminho ou arquivo em memória ---
     try:
         wb = openpyxl.load_workbook(
             arquivo, data_only=True, read_only=True
@@ -249,7 +247,6 @@ def ler_excel(arquivo) -> ResultadoImport:
         if ws is None:
             resultado.erros.append("Planilha vazia.")
             return resultado
-
         rows = list(ws.iter_rows(values_only=True))
     finally:
         wb.close()
@@ -258,7 +255,7 @@ def ler_excel(arquivo) -> ResultadoImport:
         resultado.erros.append("Planilha vazia.")
         return resultado
 
-    # --- Achar o cabeçalho nas primeiras N linhas ---
+    # Achar o cabeçalho
     melhor_mapa: dict[int, str] = {}
     melhor_idx: int = -1
     melhor_score: int = 0
@@ -275,7 +272,6 @@ def ler_excel(arquivo) -> ResultadoImport:
             melhor_idx = i
 
     if melhor_idx == -1:
-        # Diagnóstico: mostra o que havia nas primeiras linhas
         amostra = []
         for i in range(limite):
             vistos = [str(c).strip() for c in rows[i]
@@ -297,10 +293,9 @@ def ler_excel(arquivo) -> ResultadoImport:
     resultado.linha_cabecalho = melhor_idx + 1
     resultado.colunas_reconhecidas = list(melhor_mapa.values())
 
-    # --- Percorrer as linhas de dados ---
+    # Percorrer linhas de dados
     ordem_auto = 1
     for n_linha, row in enumerate(rows[melhor_idx + 1:], start=melhor_idx + 2):
-        # Linha totalmente vazia → ignora
         if all(c is None or str(c).strip() == "" for c in row):
             continue
 
@@ -314,7 +309,6 @@ def ler_excel(arquivo) -> ResultadoImport:
             resultado.erros.append(f"Linha {n_linha}: sem título, ignorada.")
             continue
 
-        # Ordem: se vazia/0, usa auto-incremento
         ordem = _to_int(dados.get("ordem"), 0)
         if ordem <= 0:
             ordem = ordem_auto
@@ -327,6 +321,7 @@ def ler_excel(arquivo) -> ResultadoImport:
                 ordem=ordem,
                 titulo=titulo,
                 descricao=str(dados.get("descricao") or "").strip(),
+                # sistema_nome lido por compatibilidade, mas ignorado
                 sistema_nome=str(dados.get("sistema") or "").strip(),
                 prioridade=prioridade,
                 responsavel_username=str(dados.get("responsavel") or "").strip(),
@@ -350,18 +345,25 @@ def aplicar_import(checklist, resultado, criar_faltantes=False, autor=None):
     """
     Persiste as linhas no banco. Retorna o número de itens criados.
 
-    - `ChecklistItem.sistema` é CharField, então o texto da planilha
-      é copiado direto. NÃO cria objetos Sistema.
-    - `criar_faltantes` é mantido por compatibilidade, mas ignorado.
+    - `ChecklistItem.sistema` é FK para `Sistema`. Os itens
+      **herdam o sistema do checklist** (`checklist.sistema`).
+      A coluna "Sistema" da planilha é ignorada.
+    - `criar_faltantes` mantido por compatibilidade, mas ignorado.
     - Se `autor` for passado, grava um evento CRIADO por item.
     """
+    # Se o checklist não tem sistema, avisa antes de quebrar o banco
+    if checklist.sistema_id is None:
+        resultado.erros.append(
+            "O checklist não tem sistema definido. "
+            "Escolha um sistema antes de importar."
+        )
+        return 0
+
     usuarios_cache = {u.username.lower(): u for u in User.objects.all()}
+    sistema_do_checklist = checklist.sistema
 
     criados = 0
     for linha in resultado.linhas:
-        # Sistema agora é só texto — copia direto, sem criar objeto
-        sistema_texto = (linha.sistema_nome or "").strip()
-
         responsavel = None
         if linha.responsavel_username:
             responsavel = usuarios_cache.get(linha.responsavel_username.lower())
@@ -371,7 +373,7 @@ def aplicar_import(checklist, resultado, criar_faltantes=False, autor=None):
             ordem=linha.ordem,
             titulo=linha.titulo,
             descricao=linha.descricao,
-            sistema=sistema_texto,
+            sistema=sistema_do_checklist,     # <-- herda do checklist
             responsavel=responsavel,
             prioridade=linha.prioridade,
         )

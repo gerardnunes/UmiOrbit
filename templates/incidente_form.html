@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}{% if object %}Editar incidente{% else %}Novo incidente{% endif %}{% endblock %}
+
+{% block conteudo %}
+
+<!-- ============================================
+     CABEÇALHO
+     ============================================ -->
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Passadiço · ocorrências</div>
+    <h1>
+      {% if object %}
+        Editar incidente <span>{{ object.codigo }}</span>
+      {% else %}
+        Registrar incidente
+      {% endif %}
+    </h1>
+    <div class="pagina-meta">
+      {% if object %}
+        <span class="status-pill status-{{ object.status|lower }}">{{ object.get_status_display }}</span>
+        <span>aberto em {{ object.criado_em|date:"d/m/Y H:i" }}</span>
+      {% else %}
+        <span>Preencha os campos abaixo. Os com <b>*</b> são obrigatórios.</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <div class="relogio">
+      <span class="relogio-hora">{% now "H:i" %}</span>
+      <span class="relogio-data">{% now "d/m/Y" %}</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     FORM
+     ============================================ -->
+<form method="post" enctype="multipart/form-data" class="form-incidente" novalidate>
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="form-erros">
+      {% for erro in form.non_field_errors %}<div>{{ erro }}</div>{% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- ------------------------------------------
+       1. IDENTIFICAÇÃO
+       ------------------------------------------ -->
+  <fieldset class="form-bloco">
+    <legend>
+      <span class="form-bloco-num">1</span>
+      Identificação
+    </legend>
+
+    <div class="form-grid">
+      <div class="campo campo-full">
+        <label for="{{ form.titulo.id_for_label }}">
+          Título <b>*</b>
+        </label>
+        {{ form.titulo }}
+        {% if form.titulo.errors %}<div class="campo-erro">{{ form.titulo.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Resumo curto do ocorrido (ex.: "Falha de ignição do motor BB ao partir").</small>
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.tipo.id_for_label }}">Tipo <b>*</b></label>
+        {{ form.tipo }}
+        {% if form.tipo.errors %}<div class="campo-erro">{{ form.tipo.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.severidade.id_for_label }}">Severidade <b>*</b></label>
+        {{ form.severidade }}
+        {% if form.severidade.errors %}<div class="campo-erro">{{ form.severidade.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.status.id_for_label }}">Status</label>
+        {{ form.status }}
+        {% if form.status.errors %}<div class="campo-erro">{{ form.status.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.ocorrido_em.id_for_label }}">Quando ocorreu <b>*</b></label>
+        {{ form.ocorrido_em }}
+        {% if form.ocorrido_em.errors %}<div class="campo-erro">{{ form.ocorrido_em.errors|join:", " }}</div>{% endif %}
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- ------------------------------------------
+       2. LOCALIZAÇÃO
+       ------------------------------------------ -->
+  <fieldset class="form-bloco">
+    <legend>
+      <span class="form-bloco-num">2</span>
+      Onde ocorreu
+    </legend>
+
+    <div class="form-grid">
+      <div class="campo">
+        <label for="{{ form.embarcacao.id_for_label }}">Embarcação / veículo</label>
+        {{ form.embarcacao }}
+        {% if form.embarcacao.errors %}<div class="campo-erro">{{ form.embarcacao.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Ex.: L42, bote de apoio, veículo 4x4.</small>
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.sistema.id_for_label }}">Sistema afetado</label>
+        {{ form.sistema }}
+        {% if form.sistema.errors %}<div class="campo-erro">{{ form.sistema.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Motor, Bateria, Starlink, Casco, Leme...</small>
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.local.id_for_label }}">Local físico</label>
+        {{ form.local }}
+        {% if form.local.errors %}<div class="campo-erro">{{ form.local.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Proa, casco, cabine, mastro, motor...</small>
+      </div>
+
+      <div class="campo campo-check">
+        <label class="check-label">
+          {{ form.bloqueia_operacao }}
+          <span>
+            <b>Bloqueante</b> — impede a operação da embarcação
+          </span>
+        </label>
+        {% if form.bloqueia_operacao.errors %}<div class="campo-erro">{{ form.bloqueia_operacao.errors|join:", " }}</div>{% endif %}
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- ------------------------------------------
+       3. DESCRIÇÃO
+       ------------------------------------------ -->
+  <fieldset class="form-bloco">
+    <legend>
+      <span class="form-bloco-num">3</span>
+      Descrição
+    </legend>
+
+    <div class="form-grid">
+      <div class="campo campo-full">
+        <label for="{{ form.descricao.id_for_label }}">O que aconteceu <b>*</b></label>
+        {{ form.descricao }}
+        {% if form.descricao.errors %}<div class="campo-erro">{{ form.descricao.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Descreva o ocorrido, condições no momento, o que estava sendo feito.</small>
+      </div>
+
+      <div class="campo campo-full">
+        <label for="{{ form.acao_tomada.id_for_label }}">Ação tomada</label>
+        {{ form.acao_tomada }}
+        {% if form.acao_tomada.errors %}<div class="campo-erro">{{ form.acao_tomada.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">O que já foi feito para conter/mitigar o incidente.</small>
+      </div>
+
+      <div class="campo campo-full">
+        <label for="{{ form.causa_provavel.id_for_label }}">Causa provável</label>
+        {{ form.causa_provavel }}
+        {% if form.causa_provavel.errors %}<div class="campo-erro">{{ form.causa_provavel.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Sua hipótese inicial (pode ser refinada depois).</small>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- ------------------------------------------
+       4. RESPONSÁVEL
+       ------------------------------------------ -->
+  <fieldset class="form-bloco">
+    <legend>
+      <span class="form-bloco-num">4</span>
+      Responsável
+    </legend>
+
+    <div class="form-grid">
+      <div class="campo">
+        <label for="{{ form.responsavel.id_for_label }}">Atribuir a</label>
+        {{ form.responsavel }}
+        {% if form.responsavel.errors %}<div class="campo-erro">{{ form.responsavel.errors|join:", " }}</div>{% endif %}
+        <small class="campo-ajuda">Deixe em branco para atribuir depois.</small>
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- ------------------------------------------
+       BOTÕES
+       ------------------------------------------ -->
+  <div class="form-acoes">
+    <button type="submit" class="btn-primario">
+      {% if object %}Salvar alterações{% else %}Registrar incidente{% endif %}
+    </button>
+    <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{% url 'incidente_lista' %}{% endif %}"
+       class="btn-secundario">Cancelar</a>
+
+    {% if object %}
+      <a href="{% url 'incidente_apagar' object.pk %}" class="btn-perigo">Apagar</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- ============================================
+     CSS
+     ============================================ -->
+<style>
+/* ---- Form container ---- */
+.form-incidente {
+  max-width: 980px;
+  margin: 0 auto 32px;
+  display: grid;
+  gap: 16px;
+}
+
+/* ---- Blocos (fieldset) ---- */
+.form-bloco {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 18px 20px 20px;
+  background: rgba(255,255,255,.02);
+}
+.form-bloco legend {
+  padding: 0 10px;
+  font-size: .82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--texto, #e6edf3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.form-bloco-num {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(96,165,250,.2);
+  color: #60a5fa;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+/* ---- Grid ---- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.campo-full { grid-column: 1 / -1; }
+
+/* ---- Campo ---- */
+.campo { display: grid; gap: 6px; }
+.campo label {
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--texto-suave, #aab);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.campo label b { color: #f87171; }
+
+.campo input,
+.campo select,
+.campo textarea {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: var(--texto, #e6edf3);
+  font-size: .88rem;
+  font-family: inherit;
+  transition: border-color .15s, background .15s;
+}
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+  background: rgba(0,0,0,.35);
+}
+.campo textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* ---- Help / erros ---- */
+.campo-ajuda {
+  font-size: .72rem;
+  color: var(--texto-suave, #8b95a5);
+  line-height: 1.4;
+}
+.campo-erro {
+  font-size: .78rem;
+  color: #f87171;
+  font-weight: 500;
+}
+.form-erros {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.4);
+  color: #f87171;
+  font-size: .85rem;
+}
+
+/* ---- Checkbox (bloqueante) ---- */
+.campo-check { align-self: end; }
+.check-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(239,68,68,.06);
+  border: 1px solid rgba(239,68,68,.25);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: .82rem;
+  font-weight: 400;
+  color: var(--texto, #e6edf3);
+}
+.check-label:hover { background: rgba(239,68,68,.1); }
+.check-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #ef4444;
+  margin-top: 1px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.check-label b { color: #f87171; }
+
+/* ---- Botões ---- */
+.form-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 4px;
+}
+.btn-primario,
+.btn-secundario,
+.btn-perigo {
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: .88rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-primario {
+  background: #3b82f6;
+  color: #fff;
+}
+.btn-primario:hover { background: #2563eb; }
+
+.btn-secundario {
+  background: rgba(255,255,255,.04);
+  border-color: rgba(255,255,255,.15);
+  color: var(--texto, #e6edf3);
+}
+.btn-secundario:hover { background: rgba(255,255,255,.08); }
+
+.btn-perigo {
+  background: rgba(239,68,68,.12);
+  border-color: rgba(239,68,68,.4);
+  color: #f87171;
+  margin-right: auto;
+}
+.btn-perigo:hover { background: rgba(239,68,68,.22); }
+
+/* ---- Responsivo ---- */
+@media (max-width: 720px) {
+  .form-bloco { padding: 14px 16px 16px; }
+  .form-grid  { grid-template-columns: 1fr; }
+  .form-acoes { flex-direction: column-reverse; align-items: stretch; }
+  .btn-primario,
+  .btn-secundario,
+  .btn-perigo { justify-content: center; width: 100%; }
+  .btn-perigo { margin-right: 0; }
+}
+</style>
+
+{% endblock %}

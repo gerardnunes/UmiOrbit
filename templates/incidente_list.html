@@ -1,0 +1,697 @@
+{% extends "base.html" %}
+{% load op static %}
+{% block titulo %}Incidentes{% endblock %}
+
+{% block conteudo %}
+
+<!-- ============================================
+     MENSAGENS
+     ============================================ -->
+{% if messages %}
+  <ul class="mensagens-incidente">
+    {% for m in messages %}
+      <li class="msg msg-{{ m.tags }}">{{ m }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+<!-- ============================================
+     CABEÇALHO
+     ============================================ -->
+<section class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Passadiço · ocorrências</div>
+    <h1>Incidentes <span>L42</span></h1>
+    <div class="pagina-meta">
+      <span class="pagina-estado {{ estado_geral|lower }}">
+        <span class="dot"></span>{{ estado_geral_titulo }}
+      </span>
+      <span>{{ incidentes_abertos }} aberto{{ incidentes_abertos|pluralize }} · {{ total_incidentes }} no total</span>
+      {% if n_criticos %}
+        <span class="pagina-bloqueio">{{ n_criticos }} crítico{{ n_criticos|pluralize }}</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <div class="relogio">
+      <span class="relogio-hora">{% now "H:i" %}</span>
+      <span class="relogio-data">{% now "d/m/Y" %}</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================
+     AÇÕES RÁPIDAS
+     ============================================ -->
+<section class="acoes-incidente">
+  <a href="{% url 'incidente_novo' %}" class="btn-incidente btn-perigo">
+    <span>⚠</span> Registrar incidente
+  </a>
+  <a href="{% url 'incidente_novo' %}?tipo=avaria" class="btn-incidente">
+    <span>🔧</span> Avaria
+  </a>
+  <a href="{% url 'incidente_novo' %}?tipo=colisao" class="btn-incidente">
+    <span>💥</span> Colisão
+  </a>
+  <a href="{% url 'incidente_novo' %}?tipo=falha_sistema" class="btn-incidente">
+    <span>⚙</span> Falha de sistema
+  </a>
+  <a href="{% url 'incidente_novo' %}?tipo=quase_acidente" class="btn-incidente">
+    <span>🟡</span> Quase-acidente
+  </a>
+</section>
+
+<!-- ============================================
+     MÉTRICAS RÁPIDAS
+     ============================================ -->
+<section class="kpis">
+  <div class="kpi kpi-abertos">
+    <div class="kpi-rotulo">Abertos</div>
+    <div class="kpi-valor">{{ incidentes_abertos }}<small>/{{ total_incidentes }}</small></div>
+    <div class="kpi-sub">em investigação</div>
+  </div>
+
+  <div class="kpi kpi-criticos">
+    <div class="kpi-rotulo">Críticos</div>
+    <div class="kpi-valor">{{ n_criticos }}</div>
+    <div class="kpi-sub">bloqueantes operacionais</div>
+  </div>
+
+  <div class="kpi kpi-tempo">
+    <div class="kpi-rotulo">Tempo médio resolução</div>
+    <div class="kpi-valor">{{ tmr_dias|default:"—" }}<small>d</small></div>
+    <div class="kpi-sub">média dos últimos 30 dias</div>
+  </div>
+
+  <div class="kpi kpi-mttr">
+    <div class="kpi-rotulo">MTTR</div>
+    <div class="kpi-valor">{{ mttr_horas|default:"—" }}<small>h</small></div>
+    <div class="kpi-sub">tempo médio de reparo</div>
+  </div>
+</section>
+
+<!-- ============================================
+     CONSOLE PRINCIPAL
+     ============================================ -->
+<div class="console">
+
+  <!-- LINHA 1: barco com marcadores de incidentes -->
+  <section class="console-barco">
+    <div class="barco-moldura {{ estado_geral }}">
+      <div class="barco-cena">
+        <div class="barco-flutuante">
+          <div class="barco-img-wrap" id="barco-img-wrap">
+            <img src="{% static 'img/barco-l42.png' %}" alt="USV L42">
+          </div>
+        </div>
+      </div>
+      <div class="barco-legenda">
+        <span class="leg"><span class="dot critico"></span>Crítico</span>
+        <span class="leg"><span class="dot alto"></span>Alto</span>
+        <span class="leg"><span class="dot atencao"></span>Médio</span>
+        <span class="leg"><span class="dot ok"></span>Resolvido</span>
+        <span class="leg-sep"></span>
+        <span class="leg-hora">atualizado {{ agora|date:"H:i" }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Painel lateral: resumo por severidade -->
+  <section class="console-prontidao">
+    <header class="painel-titulo">
+      <span>Distribuição por severidade</span>
+      <span class="painel-titulo-acao">SEV</span>
+    </header>
+
+    <div class="sev-barra">
+      {% for s in severidades %}
+        <div class="sev-item sev-{{ s.chave }}">
+          <div class="sev-item-topo">
+            <span class="sev-label">{{ s.label }}</span>
+            <b>{{ s.qtd }}</b>
+          </div>
+          <div class="sev-trilha">
+            <span style="width:{{ s.pct }}%"></span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if n_criticos %}
+      <div class="prontidao-alerta">
+        <b>{{ n_criticos }}</b> incidente{{ n_criticos|pluralize }}
+        crítico{{ n_criticos|pluralize }} requer{{ n_criticos|pluralize:",em" }} ação imediata.
+      </div>
+    {% endif %}
+
+    <ul class="prontidao-resumo">
+      <li><span>Em análise</span><b>{{ n_em_analise }}</b></li>
+      <li><span>Em reparo</span><b>{{ n_em_reparo }}</b></li>
+      <li><span>Aguardando peça</span><b>{{ n_aguardando_peca }}</b></li>
+      <li><span>Resolvidos hoje</span><b>{{ n_resolvidos_hoje }}</b></li>
+    </ul>
+  </section>
+
+  <!-- LINHA 2: filtros + lista de incidentes -->
+  <section class="painel painel-incidentes" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Incidentes</span>
+      <span class="painel-titulo-acao">
+        <a href="?status=abertos" class="{% if filtro_status == 'abertos' %}ativo{% endif %}">abertos</a> ·
+        <a href="?status=todos" class="{% if filtro_status == 'todos' %}ativo{% endif %}">todos</a>
+      </span>
+    </header>
+
+    <div class="filtros-incidente">
+      <form method="get" class="filtros-form">
+        <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+               placeholder="Buscar por código, título, local..." class="filtro-input">
+        <select name="severidade" class="filtro-select">
+          <option value="">Severidade</option>
+          <option value="critico" {% if request.GET.severidade == 'critico' %}selected{% endif %}>Crítico</option>
+          <option value="alto"    {% if request.GET.severidade == 'alto' %}selected{% endif %}>Alto</option>
+          <option value="medio"   {% if request.GET.severidade == 'medio' %}selected{% endif %}>Médio</option>
+          <option value="baixo"   {% if request.GET.severidade == 'baixo' %}selected{% endif %}>Baixo</option>
+        </select>
+        <select name="tipo" class="filtro-select">
+          <option value="">Tipo</option>
+          <option value="avaria"         {% if request.GET.tipo == 'avaria' %}selected{% endif %}>Avaria</option>
+          <option value="colisao"        {% if request.GET.tipo == 'colisao' %}selected{% endif %}>Colisão</option>
+          <option value="falha_sistema"  {% if request.GET.tipo == 'falha_sistema' %}selected{% endif %}>Falha de sistema</option>
+          <option value="quase_acidente" {% if request.GET.tipo == 'quase_acidente' %}selected{% endif %}>Quase-acidente</option>
+          <option value="outro"          {% if request.GET.tipo == 'outro' %}selected{% endif %}>Outro</option>
+        </select>
+        <select name="sistema" class="filtro-select">
+          <option value="">Sistema</option>
+          {% for s in sistemas_opcoes %}
+            <option value="{{ s.chave }}" {% if request.GET.sistema == s.chave %}selected{% endif %}>{{ s.label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="filtro-btn">Filtrar</button>
+        {% if request.GET.q or request.GET.severidade or request.GET.tipo or request.GET.sistema %}
+          <a href="{% url 'incidente_lista' %}" class="filtro-limpar">limpar</a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% for i in incidentes %}
+      <a href="{{ i.get_absolute_url }}" class="incidente-card incidente-{{ i.severidade|lower }}">
+        <div class="incidente-card-sev">
+          <span class="sev-pill sev-{{ i.severidade|lower }}">{{ i.get_severidade_display }}</span>
+        </div>
+        <div class="incidente-card-corpo">
+          <div class="incidente-card-topo">
+            <div>
+              <strong class="incidente-codigo">{{ i.codigo }}</strong>
+              <strong class="incidente-titulo">{{ i.titulo }}</strong>
+            </div>
+            <span class="status-pill status-{{ i.status|lower }}">{{ i.get_status_display }}</span>
+          </div>
+          <div class="incidente-card-meta">
+            <span>🏷 {{ i.get_tipo_display }}</span>
+            {% if i.sistema %}<span>⚙ {{ i.sistema }}</span>{% endif %}
+            {% if i.local %}<span>📍 {{ i.local }}</span>{% endif %}
+            {% if i.embarcacao %}<span>🚤 {{ i.embarcacao }}</span>{% endif %}
+            {% if i.responsavel %}<span>👤 {{ i.responsavel.get_full_name|default:i.responsavel.username }}</span>{% endif %}
+            <span class="mono">🕒 {{ i.ocorrido_em|date:"d/m H:i" }}</span>
+          </div>
+          {% if i.descricao %}
+            <div class="incidente-card-desc">{{ i.descricao|truncatechars:160 }}</div>
+          {% endif %}
+        </div>
+        {% if i.bloqueante %}
+          <div class="incidente-card-bloq" title="Bloqueante">🔒</div>
+        {% endif %}
+      </a>
+    {% empty %}
+      <div class="tabela-vazio" style="padding:32px;">
+        Nenhum incidente encontrado.
+        <a href="{% url 'incidente_novo' %}">Registrar o primeiro →</a>
+      </div>
+    {% endfor %}
+
+    {% if is_paginated %}
+      <div class="paginacao">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">← anterior</a>
+        {% endif %}
+        <span>página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">próxima →</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- LINHA 3: timeline de ocorrências recentes -->
+  <section class="painel painel-timeline" style="grid-column: 1 / -1;">
+    <header class="painel-titulo">
+      <span>Linha do tempo de ocorrências</span>
+      <span class="painel-titulo-acao">LOG</span>
+    </header>
+    <ul class="timeline">
+      {% for t in timeline %}
+        <li class="timeline-item timeline-{{ t.cor }}">
+          <span class="timeline-icone">{{ t.icone }}</span>
+          <div class="timeline-conteudo">
+            <div class="timeline-topo">
+              <strong>{{ t.titulo }}</strong>
+              <span class="mono timeline-hora">{{ t.quando|date:"d/m H:i" }}</span>
+            </div>
+            <small>
+              {{ t.texto }}
+              {% if t.autor %} · {{ t.autor }}{% endif %}
+            </small>
+          </div>
+        </li>
+      {% empty %}
+        <li class="tabela-vazio">Sem ocorrências registradas.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+</div>
+
+<!-- ============================================
+     CSS
+     ============================================ -->
+<style>
+/* ---- Mensagens ---- */
+.mensagens-incidente {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 8px;
+}
+.msg {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: .85rem;
+  border: 1px solid transparent;
+}
+.msg-success { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.4); color: #4ade80; }
+.msg-error   { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); color: #f87171; }
+.msg-warning { background: rgba(245,158,11,.12); border-color: rgba(245,158,11,.4); color: #fbbf24; }
+.msg-info    { background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.4); color: #60a5fa; }
+
+/* ---- Ações rápidas ---- */
+.acoes-incidente {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.btn-incidente {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.12);
+  color: var(--texto, #e6edf3);
+  text-decoration: none;
+  font-size: .85rem;
+  transition: all .15s;
+}
+.btn-incidente:hover {
+  background: rgba(96,165,250,.12);
+  border-color: #60a5fa;
+}
+.btn-incidente.btn-perigo {
+  background: rgba(239,68,68,.15);
+  border-color: rgba(239,68,68,.5);
+}
+.btn-incidente.btn-perigo:hover {
+  background: rgba(239,68,68,.28);
+  border-color: #ef4444;
+}
+
+/* ---- KPIs ---- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.kpi {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-left: 3px solid #3b82f6;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.kpi-abertos  { border-left-color: #fbbf24; }
+.kpi-criticos { border-left-color: #ef4444; }
+.kpi-tempo    { border-left-color: #60a5fa; }
+.kpi-mttr     { border-left-color: #a78bfa; }
+
+.kpi-rotulo {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--texto-suave, #aab);
+  margin-bottom: 4px;
+}
+.kpi-valor {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.kpi-valor small {
+  font-size: .8rem;
+  font-weight: 400;
+  color: var(--texto-suave, #aab);
+  margin-left: 2px;
+}
+.kpi-sub {
+  font-size: .72rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 4px;
+}
+
+/* ---- Severidade: barras ---- */
+.sev-barra { display: grid; gap: 10px; margin-top: 6px; }
+.sev-item-topo {
+  display: flex;
+  justify-content: space-between;
+  font-size: .8rem;
+  margin-bottom: 4px;
+}
+.sev-label { color: var(--texto-suave, #aab); }
+.sev-trilha {
+  height: 6px;
+  background: rgba(255,255,255,.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.sev-trilha span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+}
+.sev-critico .sev-trilha span { background: linear-gradient(90deg, #dc2626, #f87171); }
+.sev-alto    .sev-trilha span { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.sev-medio   .sev-trilha span { background: linear-gradient(90deg, #eab308, #facc15); }
+.sev-baixo   .sev-trilha span { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+/* ---- Filtros ---- */
+.filtros-incidente {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.02);
+}
+.filtros-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.filtro-input,
+.filtro-select {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.25);
+  color: var(--texto, #e6edf3);
+  font-size: .82rem;
+}
+.filtro-input { min-width: 220px; flex: 1; }
+.filtro-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: #3b82f6;
+  border: none;
+  color: #fff;
+  font-size: .82rem;
+  cursor: pointer;
+}
+.filtro-limpar {
+  font-size: .8rem;
+  color: var(--texto-suave, #aab);
+  text-decoration: underline;
+}
+
+/* ---- Card de incidente ---- */
+.incidente-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  border-left: 3px solid transparent;
+  text-decoration: none;
+  color: inherit;
+  transition: background .15s;
+  align-items: stretch;
+}
+.incidente-card:hover { background: rgba(59,130,246,.05); }
+.incidente-card.incidente-critico { border-left-color: #ef4444; }
+.incidente-card.incidente-alto    { border-left-color: #f59e0b; }
+.incidente-card.incidente-medio   { border-left-color: #eab308; }
+.incidente-card.incidente-baixo   { border-left-color: #22c55e; }
+
+.incidente-card-sev { flex-shrink: 0; }
+.sev-pill {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sev-pill.sev-critico { background: rgba(239,68,68,.2);  color: #f87171; }
+.sev-pill.sev-alto    { background: rgba(245,158,11,.2); color: #fbbf24; }
+.sev-pill.sev-medio   { background: rgba(234,179,8,.2);  color: #facc15; }
+.sev-pill.sev-baixo   { background: rgba(34,197,94,.2);  color: #4ade80; }
+
+.incidente-card-corpo { flex: 1; min-width: 0; }
+.incidente-card-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.incidente-codigo {
+  font-family: monospace;
+  font-size: .78rem;
+  color: var(--texto-suave, #aab);
+  margin-right: 6px;
+}
+.incidente-titulo { font-size: .95rem; }
+.incidente-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: .74rem;
+  color: var(--texto-suave, #aab);
+  margin-bottom: 6px;
+}
+.incidente-card-desc {
+  font-size: .8rem;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+.incidente-card-bloq {
+  align-self: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* ---- Status pill ---- */
+.status-pill {
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: .68rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+  white-space: nowrap;
+}
+.status-pill.status-aberto          { background: rgba(245,158,11,.15); color: #fbbf24; }
+.status-pill.status-em_analise      { background: rgba(59,130,246,.15); color: #60a5fa; }
+.status-pill.status-em_reparo       { background: rgba(168,85,247,.15); color: #c084fc; }
+.status-pill.status-aguardando_peca { background: rgba(148,163,184,.15); color: #cbd5e1; }
+.status-pill.status-resolvido       { background: rgba(34,197,94,.15);  color: #4ade80; }
+.status-pill.status-cancelado       { background: rgba(239,68,68,.15);  color: #f87171; }
+
+/* ---- Timeline ---- */
+.timeline-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  align-items: flex-start;
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-icone {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,.05);
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+.timeline-critico .timeline-icone { background: rgba(239,68,68,.15); }
+.timeline-alto    .timeline-icone { background: rgba(245,158,11,.15); }
+.timeline-resolvido .timeline-icone { background: rgba(34,197,94,.15); }
+.timeline-conteudo { flex: 1; min-width: 0; }
+.timeline-topo {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.timeline-topo strong {
+  font-size: .88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-hora {
+  font-size: .7rem;
+  color: var(--texto-suave, #aab);
+  flex-shrink: 0;
+}
+.timeline-conteudo small {
+  display: block;
+  font-size: .75rem;
+  color: var(--texto-suave, #aab);
+  margin-top: 2px;
+}
+
+/* ---- Paginação ---- */
+.paginacao {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px;
+  font-size: .82rem;
+  border-top: 1px solid rgba(255,255,255,.05);
+}
+.paginacao a { color: #60a5fa; text-decoration: none; }
+.paginacao a:hover { text-decoration: underline; }
+
+/* ---- Responsivo ---- */
+@media (max-width: 720px) {
+  .filtro-input { min-width: 100%; }
+  .incidente-card { flex-direction: column; }
+  .incidente-card-bloq { align-self: flex-start; }
+}
+</style>
+
+<!-- ============================================
+     SCRIPT: marcadores no barco
+     ============================================ -->
+<script>
+const LOCAIS_BARCO = {
+  "proa":     { top: "50%", left: "8%"  },
+  "casco":    { top: "82%", left: "45%" },
+  "cabine":   { top: "48%", left: "50%" },
+  "mastro":   { top: "15%", left: "42%" },
+  "antena":   { top: "2%",  left: "46%" },
+  "motor":    { top: "72%", left: "78%" },
+  "helice":   { top: "88%", left: "95%" },
+  "bateria":  { top: "68%", left: "68%" },
+  "starlink": { top: "5%",  left: "45%" },
+  "leme":     { top: "78%", left: "90%" },
+  "inversor": { top: "58%", left: "62%" },
+};
+
+const incidentesAtuais = {{ incidentes_mapa|default:"[]"|safe }};
+
+document.addEventListener('DOMContentLoaded', () => {
+  const wrap = document.getElementById('barco-img-wrap');
+  if (!wrap) return;
+
+  incidentesAtuais.forEach(i => {
+    const pos = LOCAIS_BARCO[i.local] || LOCAIS_BARCO["cabine"];
+    const el = document.createElement('span');
+    el.className = 'ponto-incidente sev-' + i.severidade + (i.bloqueante ? ' bloqueante' : '');
+    el.style.top = pos.top;
+    el.style.left = pos.left;
+    el.title = i.codigo + ' · ' + i.titulo + ' (' + i.severidade + ')';
+
+    const tip = document.createElement('span');
+    tip.className = 'ponto-tooltip';
+    tip.innerHTML = '<b>' + i.codigo + '</b> ' + i.titulo + '<br>'
+      + '<small>' + i.severidade
+      + (i.bloqueante ? ' · BLOQUEANTE' : '')
+      + ' · ' + i.status + '</small>';
+    el.appendChild(tip);
+
+    wrap.appendChild(el);
+  });
+});
+</script>
+
+<style>
+#barco-img-wrap {
+  position: relative;
+  width: 100%;
+}
+#barco-img-wrap > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.ponto-incidente {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 5;
+  animation: pulso-inc 2s infinite;
+}
+.ponto-incidente.sev-critico { background: #ef4444; }
+.ponto-incidente.sev-alto    { background: #f59e0b; }
+.ponto-incidente.sev-medio   { background: #eab308; }
+.ponto-incidente.sev-baixo   { background: #22c55e; }
+.ponto-incidente.bloqueante  { animation: pulso-bloq 1.2s infinite; }
+
+@keyframes pulso-inc {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,.5); }
+  70%  { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+@keyframes pulso-bloq {
+  0%   { box-shadow: 0 0 0 0 rgba(239,68,68,.7); }
+  70%  { box-shadow: 0 0 0 14px rgba(239,68,68,0); }
+  100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+}
+
+.ponto-tooltip {
+  position: absolute;
+  bottom: 140%;
+  left: 50%;
+  transform: translateX(-50%) scale(.9);
+  background: #0f1720;
+  border: 1px solid rgba(255,255,255,.15);
+  color: #e6edf3;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: .75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s, transform .15s;
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+  z-index: 30;
+}
+.ponto-tooltip small { color: #aab; }
+.ponto-incidente:hover { z-index: 20; }
+.ponto-incidente:hover .ponto-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+</style>
+
+{% endblock %}

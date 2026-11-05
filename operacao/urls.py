@@ -35,7 +35,25 @@ urlpatterns = [
     path("auditoria/<uuid:token>/item/<int:item_id>/foto/", views.AuditoriaUploadFotoView.as_view(), name="auditoria_foto"),
     path("missoes/<int:pk>/", views.MissaoDetailView.as_view(), name="missao_detalhe"),
     path("auditoria/<uuid:token>/foto/<int:foto_id>/remover/", views.AuditoriaRemoverFotoView.as_view(), name="auditoria_foto_remover"),
+    # ---------------- INCIDENTES ----------------
+    path("incidentes/", views.IncidenteListView.as_view(), name="incidente_lista"),
+    path("incidentes/novo/", views.IncidenteCreateView.as_view(), name="incidente_novo"),
+    path("incidentes/<int:pk>/", views.IncidenteDetailView.as_view(), name="incidente_detalhe"),
+    path("incidentes/<int:pk>/editar/", views.IncidenteUpdateView.as_view(), name="incidente_editar"),
+    path("incidentes/<int:pk>/apagar/", views.IncidenteDeleteView.as_view(), name="incidente_apagar"),
+    path("incidentes/<int:pk>/status/", views.IncidenteMudarStatusView.as_view(), name="incidente_status"),
+    path("incidentes/<int:pk>/comentar/", views.IncidenteComentarView.as_view(), name="incidente_comentar"),
+    path("incidentes/<int:pk>/anexar/", views.IncidenteAnexoView.as_view(), name="incidente_anexar"),
+
+    path("incidentes/<int:pk>/anexo/<int:anexo_id>/remover/", views.IncidenteRemoverAnexoView.as_view(), name="incidente_anexo_remover"),
+    path("cadastro/", views.CadastroView.as_view(), name="cadastro"),
+    path("aguardando-aprovacao/", views.AguardandoAprovacaoView.as_view(), name="aguardando_aprovacao"),
+    path("selecionar-sistemas/", views.SelecionarSistemasView.as_view(), name="selecionar_sistemas"),
+    path("aprovacoes/", views.AprovacaoListView.as_view(), name="aprovacoes_lista"),
+    path("aprovacoes/<int:pk>/aprovar/", views.AprovarUsuarioView.as_view(), name="aprovacoes_aprovar"),
+    path("aprovacoes/<int:pk>/rejeitar/", views.RejeitarUsuarioView.as_view(), name="aprovacoes_rejeitar"),
 ]
+
 path(
     "checklists/modelo.xlsx",
     views.ChecklistModeloView.as_view(),
