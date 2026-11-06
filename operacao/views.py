@@ -1723,3 +1723,93 @@ class RejeitarUsuarioView(View):
         alvo.user.save(update_fields=["is_active"])
         messages.warning(request, f"{nome} rejeitado (conta desativada).")
         return redirect("aprovacoes_lista")
+
+# =========================================================
+# TELEMETRIA — dashboard + API
+# =========================================================
+# # =========================================================
+# TELEMETRIA — dashboard + API
+# =========================================================
+from django.http import JsonResponse
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+
+from .models import (
+    LeituraGuincho, LeituraPosicao, LeituraPropulsor, 
+    OrigemGPS, RadarDetectado,
+)
+
+
+class TelemetriaView(LoginRequiredMixin, TemplateView):
+    template_name = "telemetria.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        sistemas = _sistemas_do_usuario(self.request.user)
+        ctx["sistemas"] = sistemas
+        ctx["agora"] = timezone.now()
+        ctx["svp"] = LeituraGuincho.objects.filter(sistema__in=sistemas, tipo="SVP").order_by("-criado_em").first()
+        ctx["tracao"] = LeituraGuincho.objects.filter(sistema__in=sistemas, tipo="TRACAO").order_by("-criado_em").first()
+        ctx["posicao"] = LeituraPosicao.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
+        ctx["propulsor"] = LeituraPropulsor.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
+        ctx["origem"] = OrigemGPS.objects.filter(sistema__in=sistemas).first()
+        return ctx
+
+
+@login_required
+def api_telemetria(request):
+    sistemas = _sistemas_do_usuario(request.user)
+
+    def _guincho(qs):
+        obj = qs.order_by("-criado_em").first()
+        if not obj: return None
+        return {
+            "id": obj.id, "criado_em": obj.criado_em.isoformat(),
+            "current_temp": obj.current_temp, "current_vol": obj.current_vol,
+            "current_ele": obj.current_ele, "current_pull": obj.current_pull,
+            "rope_speed": obj.rope_speed, "pull_rope_len": obj.pull_rope_len,
+            "winch_rate": obj.winch_rate, "current_work_status": obj.current_work_status,
+            "warn": obj.warn, "sys_time": obj.sys_time,
+            "max_rope_len": obj.max_rope_len, "remain_min_rope_len": obj.remain_min_rope_len,
+            "sensor_once_rope_len": obj.sensor_once_rope_len,
+            "winch_acc_speed_ratio": obj.winch_acc_speed_ratio,
+            "winch_turn_rate_value": obj.winch_turn_rate_value,
+        }
+
+    posicao = LeituraPosicao.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
+    propulsor = LeituraPropulsor.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
+    origem = OrigemGPS.objects.filter(sistema__in=sistemas).first()
+
+    # === Radares ===
+    radares = list(
+        RadarDetectado.objects.filter(sistema__in=sistemas)
+        .values("nome", "x", "y", "distancia", "azimute", "qualidade")
+    )
+
+    rastro = list(
+        LeituraPosicao.objects.filter(sistema__in=sistemas)
+        .order_by("-criado_em").values("x", "y", "criado_em")[:200]
+    )
+    for r in rastro: r["criado_em"] = r["criado_em"].isoformat()
+    rastro.reverse()
+
+    return JsonResponse({
+        "ok": True,
+        "agora": timezone.now().isoformat(),
+        "origem": {"lat": origem.lat, "lon": origem.lon} if origem else None,
+        "guincho_svp": _guincho(LeituraGuincho.objects.filter(sistema__in=sistemas, tipo="SVP")),
+        "guincho_tracao": _guincho(LeituraGuincho.objects.filter(sistema__in=sistemas, tipo="TRACAO")),
+        "posicao": {
+            "x": posicao.x, "y": posicao.y, "z": posicao.z, "qw": posicao.qw,
+            "criado_em": posicao.criado_em.isoformat(),
+        } if posicao else None,
+        "propulsor": {
+            "steer": propulsor.steer, "modo": propulsor.modo,
+            "criado_em": propulsor.criado_em.isoformat(),
+            "ts_atuadores": [propulsor.ts_atuador_1, propulsor.ts_atuador_2, propulsor.ts_atuador_3, propulsor.ts_atuador_4],
+        } if propulsor else None,
+        "radares": radares,  # <=== A CHAVE ESTAVA FALTANDO
+        "rastro": rastro,
+    })

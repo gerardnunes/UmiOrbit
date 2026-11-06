@@ -52,7 +52,10 @@ urlpatterns = [
     path("aprovacoes/", views.AprovacaoListView.as_view(), name="aprovacoes_lista"),
     path("aprovacoes/<int:pk>/aprovar/", views.AprovarUsuarioView.as_view(), name="aprovacoes_aprovar"),
     path("aprovacoes/<int:pk>/rejeitar/", views.RejeitarUsuarioView.as_view(), name="aprovacoes_rejeitar"),
+    path("telemetria/", views.TelemetriaView.as_view(), name="telemetria"),
+    path("api/telemetria/", views.api_telemetria, name="api_telemetria"),
 ]
+
 
 path(
     "checklists/modelo.xlsx",

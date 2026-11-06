@@ -794,3 +794,156 @@ class IncidenteAnexo(models.Model):
 
     class Meta:
         ordering = ["-enviado_em"]
+
+
+# =========================================================
+# TELEMETRIA (guinchos, posição, propulsor)
+# =========================================================
+class LeituraGuincho(models.Model):
+    """Cada leitura dos guinchos (portas 7 e 8)."""
+    class Tipo(models.TextChoices):
+        TRACAO = "TRACAO", "Tração"
+        SVP = "SVP", "SVP"
+
+    sistema = models.ForeignKey(
+        Sistema, on_delete=models.CASCADE, related_name="leituras_guincho"
+    )
+    tipo = models.CharField(max_length=10, choices=Tipo.choices)
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    # Tração (porta 7)
+    max_rope_len = models.FloatField(null=True, blank=True)
+    remain_min_rope_len = models.FloatField(null=True, blank=True)
+    sensor_once_rope_len = models.FloatField(null=True, blank=True)
+    winch_acc_speed_ratio = models.FloatField(null=True, blank=True)
+    winch_turn_rate_value = models.FloatField(null=True, blank=True)
+
+    # SVP (porta 8)
+    current_temp = models.FloatField(null=True, blank=True)      # °C
+    current_vol = models.FloatField(null=True, blank=True)       # V
+    current_ele = models.FloatField(null=True, blank=True)       # A
+    current_pull = models.FloatField(null=True, blank=True)      # força
+    rope_speed = models.FloatField(null=True, blank=True)        # m/s
+    pull_rope_len = models.FloatField(null=True, blank=True)     # m
+    winch_rate = models.FloatField(null=True, blank=True)
+    current_work_status = models.IntegerField(null=True, blank=True)
+    warn = models.CharField(max_length=200, blank=True)
+    sys_time = models.CharField(max_length=40, blank=True)
+
+    raw_json = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "leitura de guincho"
+        verbose_name_plural = "leituras de guincho"
+        indexes = [models.Index(fields=["sistema", "tipo", "-criado_em"])]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} · {self.criado_em:%d/%m %H:%M:%S}"
+
+
+class LeituraPosicao(models.Model):
+    """Posição do barco (frame usv_xy_3d_id)."""
+    sistema = models.ForeignKey(
+        Sistema, on_delete=models.CASCADE, related_name="leituras_posicao"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    x = models.FloatField(help_text="metros, frame local")
+    y = models.FloatField(help_text="metros, frame local")
+    z = models.FloatField(default=0.0)
+    qw = models.FloatField(default=1.0, help_text="quaternion w (1.0 = sem rotação)")
+    timestamp_msg = models.FloatField(help_text="timestamp da mensagem (epoch)")
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "leitura de posição"
+        verbose_name_plural = "leituras de posição"
+        indexes = [models.Index(fields=["sistema", "-criado_em"])]
+
+    def __str__(self):
+        return f"({self.x:.3f}, {self.y:.3f}) · {self.criado_em:%H:%M:%S}"
+
+
+class LeituraPropulsor(models.Model):
+    """Comando de propulsão/leme (tópico 50101_142004)."""
+    sistema = models.ForeignKey(
+        Sistema, on_delete=models.CASCADE, related_name="leituras_propulsor"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    steer = models.FloatField(null=True, blank=True, help_text="comando de leme")
+    modo = models.FloatField(null=True, blank=True, help_text="valor do modo/prop (float)")
+    timestamp_msg = models.FloatField(help_text="timestamp da mensagem (epoch)")
+
+    # timestamps individuais dos atuadores
+    ts_atuador_1 = models.BigIntegerField(null=True, blank=True)
+    ts_atuador_2 = models.BigIntegerField(null=True, blank=True)
+    ts_atuador_3 = models.BigIntegerField(null=True, blank=True)
+    ts_atuador_4 = models.BigIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "leitura de propulsor"
+        verbose_name_plural = "leituras de propulsor"
+        indexes = [models.Index(fields=["sistema", "-criado_em"])]
+
+    def __str__(self):
+        return f"steer={self.steer} · {self.criado_em:%H:%M:%S}"
+
+class OrigemGPS(models.Model):
+    """Última posição GPS conhecida do barco (atualizada automaticamente)."""
+    sistema = models.OneToOneField(
+        Sistema, on_delete=models.CASCADE, related_name="origem_gps"
+    )
+    lat = models.FloatField()
+    lon = models.FloatField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "origem GPS"
+        verbose_name_plural = "origens GPS"
+
+    def __str__(self):
+        return f"{self.sistema.nome}: ({self.lat:.5f}, {self.lon:.5f})"
+
+class RadarDetectado(models.Model):
+    """Posição de um radar/obstáculo detectado."""
+    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="radares")
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    nome = models.CharField(max_length=50)
+    x = models.FloatField(help_text="metros (X local)")
+    y = models.FloatField(help_text="metros (Y local)")
+    distancia = models.FloatField(help_text="metros")
+    azimute = models.FloatField(help_text="graus")
+    timestamp = models.FloatField()
+    qualidade = models.FloatField(default=0.0)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "radar detectado"
+        verbose_name_plural = "radares detectados"
+
+class OrigemGPS(models.Model):
+    """Última posição GPS conhecida do barco."""
+    sistema = models.OneToOneField(
+        Sistema, on_delete=models.CASCADE, related_name="origem_gps"
+    )
+    lat = models.FloatField()
+    lon = models.FloatField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+
+class RadarDetectado(models.Model):
+    """Posição de um radar/obstáculo detectado."""
+    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="radares")
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+    
+    nome = models.CharField(max_length=50)
+    x = models.FloatField(help_text="metros (X local)")
+    y = models.FloatField(help_text="metros (Y local)")
+    distancia = models.FloatField(help_text="metros")
+    azimute = models.FloatField(help_text="graus")
+    timestamp = models.FloatField()
+    qualidade = models.FloatField(default=0.0)
