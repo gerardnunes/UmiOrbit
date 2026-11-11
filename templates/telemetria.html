@@ -5,19 +5,11 @@
 {% block conteudo %}
 <style>
   :root {
-    --fundo: #14171c;
-    --painel: #1b1f26;
-    --painel-alto: #232833;
-    --borda: #2b303a;
-    --borda-clara: #363c48;
-    --texto: #d9dde3;
-    --texto-fraco: #8a929e;
-    --texto-fraco-2: #5f6773;
-    --aço: #6f8ba8;
-    --aço-claro: #8fa8c2;
-    --ambar: #f59e0b;
-    --verde: #5f9c6b;
-    --vermelho: #b85a5a;
+    --fundo: #14171c; --painel: #1b1f26; --painel-alto: #232833;
+    --borda: #2b303a; --borda-clara: #363c48; --texto: #d9dde3;
+    --texto-fraco: #8a929e; --texto-fraco-2: #5f6773;
+    --aço: #6f8ba8; --aço-claro: #8fa8c2; --ambar: #f59e0b;
+    --verde: #5f9c6b; --vermelho: #b85a5a;
     --sombra: 0 1px 2px rgba(0,0,0,.25), 0 1px 8px rgba(0,0,0,.15);
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --mono: "SF Mono", "Menlo", "Consolas", monospace;
@@ -90,7 +82,7 @@
 <div class="telemetria-wrap">
   <div class="cabecalho">
     <div class="cabecalho-esq">
-      <h1>Painel de bordo (SOMENTE RODANDO EM SISTEMA LOCAL) </h1>
+      <h1>Painel de bordo</h1>
       <div class="sub">atualizado <span id="ultima-atualizacao">—</span></div>
     </div>
     <div class="cabecalho-dir">
@@ -102,7 +94,6 @@
   <div id="debug-box"></div>
 
   <div class="grade">
-    <!-- MAPA (Posição + Radares) -->
     <section class="cartao">
       <div class="cartao-topo">
         <span>Posição e Radares</span>
@@ -124,7 +115,6 @@
       </div>
     </section>
 
-    <!-- PROPULSOR -->
     <section class="cartao">
       <div class="cartao-topo">
         <span>Propulsor</span>
@@ -153,7 +143,6 @@
   </div>
 
   <div class="grade">
-    <!-- GUINCHO SVP -->
     <section class="cartao">
       <div class="cartao-topo">
         <span>Guincho · SVP</span>
@@ -177,7 +166,6 @@
       </div>
     </section>
 
-    <!-- GUINCHO TRAÇÃO -->
     <section class="cartao">
       <div class="cartao-topo">
         <span>Guincho · Tração</span>
@@ -194,6 +182,34 @@
       </div>
     </section>
   </div>
+
+  <div class="grade">
+    <section class="cartao">
+      <div class="cartao-topo">
+        <span>🔋 Bateria</span>
+        <span class="acao">20401</span>
+      </div>
+      <div class="cartao-corpo">
+        <ul class="linhas">
+          <li><span>temperatura</span><b id="bat-temp">—</b></li>
+          <li><span>células</span><b id="bat-celulas">—</b></li>
+          <li><span>contador</span><b id="bat-contador">—</b></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="cartao" style="grid-column: span 2;">
+      <div class="cartao-topo">
+        <span>💡 Status das Luzes</span>
+        <span class="acao">10102</span>
+      </div>
+      <div class="cartao-corpo" style="max-height: 250px; overflow-y: auto;">
+        <ul class="linhas" id="lista-luzes">
+          <li><span>Aguardando...</span></li>
+        </ul>
+      </div>
+    </section>
+  </div>
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -203,7 +219,6 @@
 window.addEventListener("DOMContentLoaded", function () {
   "use strict";
 
-  // Centro inicial (Açu-RJ, fallback)
   var CENTRO_FALLBACK = { lat: -20.3286, lon: -40.3078, zoom: 14 };
   var ORIGEM = { lat: null, lon: null };
   var origemGeografica = false;
@@ -294,18 +309,16 @@ window.addEventListener("DOMContentLoaded", function () {
     setTimeout(function () { mapa.invalidateSize(); }, 200);
   }
 
-  // Converte X, Y (metros) para Lat/Lon usando a origem GPS
-function localParaLatLon(x, y) {
-  if (origemGeografica) {
-    var mPorGrauLat = 111320;
-    var mPorGrauLon = 111320 * Math.cos(ORIGEM.lat * Math.PI / 180);
-    // Y invertido: y positivo = Sul (frame ROS)
-    return [ORIGEM.lat - (y / mPorGrauLat), ORIGEM.lon + (x / mPorGrauLon)];
+  function localParaLatLon(x, y) {
+    if (origemGeografica) {
+      var mPorGrauLat = 111320;
+      var mPorGrauLon = 111320 * Math.cos(ORIGEM.lat * Math.PI / 180);
+      // Eixo X = Longitude, Eixo Y = Latitude
+      return [ORIGEM.lat + (y / mPorGrauLat), ORIGEM.lon + (x / mPorGrauLon)];
+    }
+    return [CENTRO_FALLBACK.lat, CENTRO_FALLBACK.lon];
   }
-  return [CENTRO_FALLBACK.lat, CENTRO_FALLBACK.lon];
-}
 
-  // Desenha a trajetória do barco
   function atualizarMapa(pos, rastro) {
     if (!mapa || !pos) return;
 
@@ -335,21 +348,17 @@ function localParaLatLon(x, y) {
     if (legenda) legenda.textContent = atual[0].toFixed(4) + ", " + atual[1].toFixed(4);
   }
 
-  // Desenha os radares ao redor do barco
   function atualizarRadares(radares) {
     if (!mapa || !origemGeografica || !radares) return;
 
-    // Limpa os marcadores antigos
     radaresMarkers.forEach(function(m) { mapa.removeLayer(m); });
     radaresMarkers = [];
 
     radares.forEach(function(r) {
-      if (r.nome === 'bs_63') return; // Ignora a base station
+      if (r.nome === 'bs_63') return;
 
-      // Converte a posição local do radar para lat/lon
       var ll = localParaLatLon(r.x, r.y);
 
-      // Bolinha amarela/laranja
       var marker = L.circleMarker(ll, {
         radius: 6,
         color: '#f59e0b',
@@ -394,7 +403,6 @@ function localParaLatLon(x, y) {
   }
 
   function atualizar(dados) {
-    // GPS (Origem)
     if (dados.origem && dados.origem.lat != null && dados.origem.lon != null) {
       var primeira = !origemGeografica;
       ORIGEM.lat = dados.origem.lat;
@@ -409,17 +417,14 @@ function localParaLatLon(x, y) {
       mostrarAviso("aguardando sinal de GPS…");
     }
 
-    // Posição
     if (dados.posicao) {
       atualizarMapa(dados.posicao, dados.rastro || []);
     }
 
-    // Radares
     if (dados.radares) {
       atualizarRadares(dados.radares);
     }
 
-    // Propulsor
     if (dados.propulsor) {
       var p = dados.propulsor;
       atualizarSteer(p.steer);
@@ -431,7 +436,6 @@ function localParaLatLon(x, y) {
       }
     }
 
-    // Guincho SVP
     if (dados.guincho_svp) {
       var g = dados.guincho_svp;
       setText("svp-temp", fmt(g.current_temp, 1, " °C"));
@@ -452,7 +456,6 @@ function localParaLatLon(x, y) {
       }
     }
 
-    // Guincho Tração
     if (dados.guincho_tracao) {
       var t = dados.guincho_tracao;
       setText("tracao-max", fmt(t.max_rope_len, 1, " m"));
@@ -460,6 +463,25 @@ function localParaLatLon(x, y) {
       setText("tracao-sensor", fmt(t.sensor_once_rope_len, 3, " m"));
       setText("tracao-acc", fmt(t.winch_acc_speed_ratio, 2));
       setText("tracao-turn", fmt(t.winch_turn_rate_value, 3));
+    }
+
+    // ---------- Bateria ----------
+    if (dados.bateria) {
+      setText("bat-temp", fmt(dados.bateria.temperatura, 1, " °C"));
+      setText("bat-celulas", dados.bateria.celulas || "—");
+      setText("bat-contador", fmt(dados.bateria.contador, 2));
+    }
+
+    // ---------- Luzes ----------
+    if (dados.luzes && dados.luzes.length > 0) {
+      var lista = document.getElementById("lista-luzes");
+      lista.innerHTML = dados.luzes.map(function(l) {
+        // No protocolo do barco, 0x28 (40) é ON.
+        var isOn = l.status === 40 || l.status === 1 || l.status === 0x28;
+        var cor = isOn ? "var(--verde)" : "var(--texto-fraco)";
+        var texto = isOn ? "LIGADA" : "DESLIGADA";
+        return '<li><span>' + l.nome + '</span><b style="color:' + cor + '">' + texto + '</b></li>';
+      }).join("");
     }
 
     setText("ultima-atualizacao", hora(dados.agora));
@@ -483,7 +505,7 @@ function localParaLatLon(x, y) {
 
   initMapa();
   puxar();
-  setInterval(puxar, 2000); // Atualiza a cada 2 segundos
+  setInterval(puxar, 2000);
 });
 </script>
 {% endblock %}

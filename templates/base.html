@@ -74,6 +74,10 @@
         <a href="{% url 'missoes' %}" class="{% if u == 'missoes' %}ativo{% endif %}">
           <span class="ic">≡</span><span>Missões</span>
         </a>
+        <a href="{% url 'mission_plan_list' %}" class="{% if u == 'mission_plan_list' or u == 'mission_plan_create' or u == 'mission_plan_detail' or u == 'mission_plan_update' %}ativo{% endif %}">
+  <span class="ic">▤</span><span>Planejamento de Missão</span>
+</a>
+       
         <a href="{% url 'telemetria' %}" class="{% if u == 'telemetria' %}ativo{% endif %}">
           <span class="ic">📡</span><span>Telemetria</span>
         </a>

@@ -947,3 +947,190 @@ class RadarDetectado(models.Model):
     azimute = models.FloatField(help_text="graus")
     timestamp = models.FloatField()
     qualidade = models.FloatField(default=0.0)
+from django.conf import settings
+from django.db import models
+from django.urls import reverse
+
+
+class MissionPlan(models.Model):
+    """Plano detalhado de uma missão: área, parâmetros e rota."""
+
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Rascunho"
+        PLANNED = "PLANNED", "Planejada"
+        UNDER_RISK_ANALYSIS = "UNDER_RISK_ANALYSIS", "Em análise de risco"
+        APPROVED = "APPROVED", "Aprovada"
+        IN_PROGRESS = "IN_PROGRESS", "Em execução"
+        COMPLETED = "COMPLETED", "Concluída"
+        ABORTED = "ABORTED", "Abortada"
+
+    class PadraoRota(models.TextChoices):
+        LAWN_MOWER = "LAWN_MOWER", "Lawn Mower (varredura)"
+        WAYPOINTS = "WAYPOINTS", "Waypoints"
+
+    missao = models.ForeignKey(
+        "Missao", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="planos",
+    )
+    sistema = models.ForeignKey(
+        "Sistema", on_delete=models.PROTECT, related_name="mission_plans",
+    )
+
+    nome = models.CharField(max_length=160)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.DRAFT,
+    )
+    padrao_rota = models.CharField(
+        max_length=20, choices=PadraoRota.choices,
+        default=PadraoRota.LAWN_MOWER,
+    )
+
+    area_geojson = models.JSONField(
+        default=dict, blank=True,
+        help_text="Polígono GeoJSON (Feature ou Geometry) da área de operação.",
+    )
+
+    partida_lat = models.FloatField(null=True, blank=True)
+    partida_lon = models.FloatField(null=True, blank=True)
+    chegada_lat = models.FloatField(null=True, blank=True)
+    chegada_lon = models.FloatField(null=True, blank=True)
+
+    velocidade_planejada_nos = models.FloatField(
+        default=3.0, help_text="Velocidade planejada em nós.",
+    )
+    espacamento_linhas_m = models.FloatField(
+        default=50.0, help_text="Distância entre linhas de varredura, em metros.",
+    )
+    sobreposicao_pct = models.FloatField(
+        default=0.0, help_text="Sobreposição entre faixas (0 a 100).",
+    )
+    margem_seguranca_m = models.FloatField(
+        default=10.0, help_text="Margem de segurança em relação a obstáculos.",
+    )
+    angulo_linhas_graus = models.FloatField(
+        default=0.0, help_text="0 = automático (eixo maior do polígono).",
+    )
+
+    distancia_total_m = models.FloatField(default=0.0)
+    tempo_estimado_min = models.FloatField(default=0.0)
+    area_cobertura_m2 = models.FloatField(default=0.0)
+    n_waypoints = models.PositiveIntegerField(default=0)
+
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, related_name="mission_plans_criados",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "plano de missão"
+        verbose_name_plural = "planos de missão"
+        indexes = [models.Index(fields=["sistema", "status"])]
+
+    def __str__(self):
+        return f"Plano #{self.pk} · {self.nome}"
+
+    def get_absolute_url(self):
+        return reverse("mission_planner:plan_detail", args=[self.pk])
+
+
+class Route(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Rascunho"
+        PLANNED = "PLANNED", "Planejada"
+        ACTIVE = "ACTIVE", "Ativa"
+        EXECUTED = "EXECUTED", "Executada"
+        CANCELLED = "CANCELLED", "Cancelada"
+
+    plano = models.ForeignKey(
+        MissionPlan, on_delete=models.CASCADE, related_name="rotas",
+    )
+    nome = models.CharField(max_length=160, blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PLANNED,
+    )
+
+    geometria_geojson = models.JSONField(
+        default=dict, blank=True,
+        help_text="LineString GeoJSON da rota.",
+    )
+
+    distancia_total_m = models.FloatField(default=0.0)
+    tempo_estimado_min = models.FloatField(default=0.0)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"Rota #{self.pk} · {self.plano.nome}"
+
+
+class Waypoint(models.Model):
+    class Tipo(models.TextChoices):
+        PARTIDA = "PARTIDA", "Partida"
+        NAVEGACAO = "NAVEGACAO", "Navegação"
+        VIRAGEM = "VIRAGEM", "Viragem"
+        CHEGADA = "CHEGADA", "Chegada"
+
+    rota = models.ForeignKey(
+        Route, on_delete=models.CASCADE, related_name="waypoints",
+    )
+    ordem = models.PositiveIntegerField(default=0)
+    lat = models.FloatField()
+    lon = models.FloatField()
+    tipo = models.CharField(
+        max_length=20, choices=Tipo.choices, default=Tipo.NAVEGACAO,
+    )
+    rotulo = models.CharField(max_length=80, blank=True)
+    velocidade_nos = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return f"{self.ordem}. ({self.lat:.5f}, {self.lon:.5f})"
+
+
+class RouteSegment(models.Model):
+    rota = models.ForeignKey(
+        Route, on_delete=models.CASCADE, related_name="segmentos",
+    )
+    ordem = models.PositiveIntegerField(default=0)
+    waypoint_inicio = models.ForeignKey(
+        Waypoint, on_delete=models.CASCADE, related_name="segmentos_saida",
+    )
+    waypoint_fim = models.ForeignKey(
+        Waypoint, on_delete=models.CASCADE, related_name="segmentos_entrada",
+    )
+
+    distancia_m = models.FloatField(default=0.0)
+    tempo_estimado_min = models.FloatField(default=0.0)
+    rumo_graus = models.FloatField(default=0.0)
+
+    risco_pct = models.FloatField(null=True, blank=True)
+    risco_classificacao = models.CharField(max_length=20, blank=True)
+
+    class Meta:
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return f"Segmento {self.ordem} · {self.distancia_m:.0f} m"
+
+
+class StatusBateria(models.Model):
+    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="baterias")
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+    temperatura = models.FloatField(null=True, blank=True)
+    celulas = models.IntegerField(null=True, blank=True)
+    contador = models.FloatField(null=True, blank=True)
+
+class StatusLuz(models.Model):
+    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="luzes")
+    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
+    nome = models.CharField(max_length=100)
+    status = models.IntegerField(help_text="0 = OFF, >0 = ON")

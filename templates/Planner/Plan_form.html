@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar plano{% else %}Novo plano{% endif %}{% endblock %}
+
+{% block conteudo %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+
+<div class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Mission Planner</div>
+    <h1>{% if object %}Editar plano #{{ object.pk }}{% else %}Novo plano{% endif %}</h1>
+    <div class="pagina-meta">
+      <span>Desenhe a área de operação. Os parâmetros são calculados automaticamente a partir do polígono.</span>
+    </div>
+  </div>
+</div>
+
+<form method="post" id="plano-form" class="console console-planner-form">
+  {% csrf_token %}
+  {{ form.area_geojson }}
+
+  <section class="painel painel-config">
+    <header class="painel-titulo"><span>Configuração</span></header>
+    <div class="painel-corpo">
+      {% if form.non_field_errors %}
+        <div class="erro-geral">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      {% for field in form %}
+        {% if field.name != "area_geojson" %}
+          <div class="campo" data-campo="{{ field.name }}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+              <small class="ajuda">{{ field.help_text }}</small>
+            {% endif %}
+            {% if field.errors %}
+              <small class="erro">{{ field.errors|join:", " }}</small>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="painel painel-mapa">
+    <header class="painel-titulo">
+      <span>Área de operação</span>
+      <span class="painel-titulo-acao" id="mapa-status">desenhe um polígono</span>
+    </header>
+
+    <div class="mapa-toolbar">
+      <button type="button" class="btn btn-mini" id="btn-desenhar">✏️ Desenhar área</button>
+      <button type="button" class="btn btn-mini" id="btn-editar">✏ Editar área</button>
+      <button type="button" class="btn btn-mini btn-perigo" id="btn-limpar">🗑 Limpar área</button>
+    </div>
+
+    <div id="mapa" style="height: 560px;"></div>
+
+    <div class="mapa-analise" id="mapa-analise" style="display:none;">
+      <div class="analise-grid">
+        <div><span>Centróide</span><b id="analise-centroide">—</b></div>
+        <div><span>Área</span><b id="analise-area">—</b></div>
+        <div><span>Dimensões</span><b id="analise-dimensoes">—</b></div>
+        <div><span>Ângulo ideal</span><b id="analise-angulo">—</b></div>
+        <div><span>Espaçamento sugerido</span><b id="analise-espacamento">—</b></div>
+        <div><span>Partida / Chegada</span><b id="analise-partida">—</b></div>
+      </div>
+      <button type="button" class="btn btn-mini" id="btn-aplicar-sugestoes">
+        Aplicar sugestões ao formulário
+      </button>
+    </div>
+  </section>
+
+  <section class="painel painel-ambiente" id="painel-ambiente" style="display:none;">
+    <header class="painel-titulo">
+      <span>Condições ambientais</span>
+      <span class="painel-titulo-acao" id="ambiente-atualizado">—</span>
+    </header>
+    <div class="painel-corpo" id="ambiente-corpo"></div>
+    <div class="ambiente-aviso" id="ambiente-aviso" style="display:none;"></div>
+  </section>
+
+  <div class="acoes-form">
+    <button type="button" id="btn-ver-condicoes" class="btn btn-secundario">Ver condições da área</button>
+    <a class="btn btn-secundario" href="{% url 'mission_plan_list' %}">Cancelar</a>
+    <button type="submit" class="btn">Salvar plano</button>
+  </div>
+</form>
+
+<style>
+.console-planner-form {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  grid-template-areas:
+    "config mapa"
+    "ambiente ambiente"
+    "acoes acoes";
+  gap: 16px;
+}
+.painel-config   { grid-area: config; }
+.painel-mapa     { grid-area: mapa; }
+.painel-ambiente { grid-area: ambiente; }
+.acoes-form      { grid-area: acoes; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+.painel-corpo { padding: 14px; display: grid; gap: 10px; }
+.campo { display: grid; gap: 4px; }
+.campo label { font-size: .78rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .04em; }
+.campo input, .campo select, .campo textarea {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  color: var(--texto, #e6edf3);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-size: .88rem;
+  outline: none;
+  width: 100%;
+}
+.campo input:focus, .campo select:focus, .campo textarea:focus {
+  border-color: rgba(111,168,111,.6);
+}
+.campo.campo-auto input {
+  background: rgba(111,168,111,.06);
+  border-color: rgba(111,168,111,.25);
+}
+.campo.campo-auto label::after {
+  content: " · auto";
+  color: #6fa86f;
+  font-size: .68rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.ajuda { color: #64748b; font-size: .72rem; }
+.erro  { color: #c47a7a; font-size: .78rem; }
+.erro-geral {
+  color: #c47a7a;
+  background: rgba(196,122,122,.08);
+  border: 1px solid rgba(196,122,122,.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: .82rem;
+}
+
+.mapa-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.15);
+  flex-wrap: wrap;
+}
+.btn-perigo { color: #c47a7a; border: 1px solid rgba(196,122,122,.3); }
+
+.painel-mapa #mapa {
+  border-radius: 0;
+  position: relative;
+  z-index: 1;
+}
+.leaflet-top, .leaflet-bottom { z-index: 800 !important; }
+.leaflet-control-draw, .leaflet-draw-toolbar { z-index: 810 !important; }
+.leaflet-draw-toolbar a { background-color: #fff; }
+
+.mapa-analise {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.15);
+  border-radius: 0 0 10px 10px;
+}
+.analise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
+  font-size: .82rem;
+  margin-bottom: 8px;
+}
+.analise-grid > div { display: flex; justify-content: space-between; gap: 8px; }
+.analise-grid span { color: #94a3b8; }
+.analise-grid b { color: var(--texto, #e6edf3); font-weight: 500; }
+
+.ambiente-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.ambiente-card {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  border-left: 3px solid transparent;
+}
+.ambiente-card.verde    { border-left-color: #6fa86f; }
+.ambiente-card.amarelo  { border-left-color: #d4a24c; }
+.ambiente-card.laranja  { border-left-color: #e0863c; }
+.ambiente-card.vermelho { border-left-color: #c47a7a; }
+.ambiente-card.cinza    { border-left-color: #64748b; }
+.ambiente-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.ambiente-valor { font-size: 1.15rem; font-weight: 600; margin-top: 2px; }
+.ambiente-nivel { font-size: .72rem; margin-top: 2px; text-transform: capitalize; }
+.ambiente-nivel.verde    { color: #6fa86f; }
+.ambiente-nivel.amarelo  { color: #d4a24c; }
+.ambiente-nivel.laranja  { color: #e0863c; }
+.ambiente-nivel.vermelho { color: #c47a7a; }
+.ambiente-nivel.cinza    { color: #64748b; }
+.ambiente-aviso {
+  font-size: .72rem;
+  color: #94a3b8;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.15);
+}
+
+@media (max-width: 900px) {
+  .console-planner-form {
+    grid-template-columns: 1fr;
+    grid-template-areas: "config" "mapa" "ambiente" "acoes";
+  }
+}
+</style>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script>
+(function () {
+  const areaInicial = {{ area_geojson_inicial|safe }};
+  const campoHidden = document.getElementById("id_area_geojson");
+  const statusEl    = document.getElementById("mapa-status");
+  const urlAnalisar = "{% url 'analisar_area' %}";
+  const urlPonto    = "{% url 'condicoes_ponto' %}";
+
+  // ---------- MAPA ----------
+  const mapa = L.map("mapa", { zoomControl: true }).setView([-22.9, -43.2], 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap",
+  }).addTo(mapa);
+
+  const desenhados = new L.FeatureGroup().addTo(mapa);
+  const overlay    = new L.FeatureGroup().addTo(mapa);
+
+  mapa.addControl(new L.Control.Draw({
+    position: "topleft",
+    edit: { featureGroup: desenhados, remove: true },
+    draw: {
+      polygon: { allowIntersection: false, showArea: true },
+      marker: false, circle: false, circlemarker: false,
+      polyline: false, rectangle: false,
+    },
+  }));
+
+  // ---------- MARCA CAMPOS COMO AUTO ----------
+  ["partida_lat", "partida_lon", "chegada_lat", "chegada_lon", "angulo_linhas_graus"]
+    .forEach(nome => {
+      const campo = document.querySelector(`[data-campo="${nome}"]`);
+      if (campo) campo.classList.add("campo-auto");
+    });
+
+  // ---------- SINCRONIZAR ÁREA ----------
+  function sincronizarGeoJSON() {
+    const layers = desenhados.getLayers();
+    if (!layers.length) {
+      campoHidden.value = "";
+      statusEl.textContent = "desenhe um polígono";
+      return null;
+    }
+    if (layers.length > 1) {
+      for (let i = 1; i < layers.length; i++) desenhados.removeLayer(layers[i]);
+    }
+    const geometria = desenhados.getLayers()[0].toGeoJSON().geometry;
+    campoHidden.value = JSON.stringify({
+      type: "Feature", geometry: geometria, properties: {},
+    });
+    statusEl.textContent = "área definida";
+    return geometria;
+  }
+
+  // ---------- ANÁLISE AUTOMÁTICA ----------
+  async function analisarArea(geometria) {
+    try {
+      const r = await fetch(urlAnalisar, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": "{{ csrf_token }}",
+          "Accept": "application/json",
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          area_geojson: { type: "Feature", geometry: geometria, properties: {} },
+        }),
+      });
+      const d = await r.json();
+      if (!d.ok) {
+        statusEl.textContent = "erro na análise";
+        return null;
+      }
+      return d.info;
+    } catch (e) {
+      statusEl.textContent = "erro de rede na análise";
+      return null;
+    }
+  }
+
+  function formatarArea(m2) {
+    return m2 >= 1e6 ? (m2 / 1e6).toFixed(2) + " km²" : Math.round(m2) + " m²";
+  }
+
+  function atualizarAnalise(info) {
+    const bloco = document.getElementById("mapa-analise");
+    if (!info) { bloco.style.display = "none"; return; }
+    bloco.style.display = "";
+
+    document.getElementById("analise-centroide").textContent =
+      `${info.centroide.lat.toFixed(5)}, ${info.centroide.lon.toFixed(5)}`;
+    document.getElementById("analise-area").textContent = formatarArea(info.area_m2);
+    document.getElementById("analise-dimensoes").textContent =
+      `${info.largura_m} × ${info.altura_m} m`;
+    document.getElementById("analise-angulo").textContent = `${info.angulo_ideal_graus}°`;
+    document.getElementById("analise-espacamento").textContent = `${info.espacamento_sugerido_m} m`;
+    document.getElementById("analise-partida").textContent =
+      `${info.partida.lat.toFixed(4)},${info.partida.lon.toFixed(4)} → ` +
+      `${info.chegada.lat.toFixed(4)},${info.chegada.lon.toFixed(4)}`;
+
+    overlay.clearLayers();
+
+    L.circleMarker(
+      [info.partida.lat, info.partida.lon],
+      { radius: 7, color: "#6fa86f", fillColor: "#6fa86f", fillOpacity: .9 }
+    ).bindTooltip("Partida sugerida").addTo(overlay);
+
+    L.circleMarker(
+      [info.chegada.lat, info.chegada.lon],
+      { radius: 7, color: "#c47a7a", fillColor: "#c47a7a", fillOpacity: .9 }
+    ).bindTooltip("Chegada sugerida").addTo(overlay);
+
+    L.polyline(
+      [[info.partida.lat, info.partida.lon], [info.chegada.lat, info.chegada.lon]],
+      { color: "#7f9dbf", weight: 2, dashArray: "6 4" }
+    ).addTo(overlay);
+
+    L.circleMarker(
+      [info.centroide.lat, info.centroide.lon],
+      { radius: 4, color: "#fde047", fillColor: "#fde047", fillOpacity: 1 }
+    ).bindTooltip("Centróide").addTo(overlay);
+
+    window.__ultimaAnalise = info;
+  }
+
+  async function processarDesenho() {
+    const geo = sincronizarGeoJSON();
+    if (!geo) {
+      document.getElementById("mapa-analise").style.display = "none";
+      overlay.clearLayers();
+      return;
+    }
+    const info = await analisarArea(geo);
+    atualizarAnalise(info);
+  }
+
+  // ---------- EVENTOS DE DESENHO ----------
+  mapa.on(L.Draw.Event.CREATED, (e) => {
+    desenhados.clearLayers();
+    desenhados.addLayer(e.layer);
+    processarDesenho();
+  });
+  mapa.on(L.Draw.Event.EDITED, processarDesenho);
+  mapa.on(L.Draw.Event.DELETED, processarDesenho);
+
+  // ---------- BOTÕES DE ÁREA ----------
+  document.getElementById("btn-desenhar").addEventListener("click", () => {
+    desenhados.clearLayers();
+    overlay.clearLayers();
+    sincronizarGeoJSON();
+    document.getElementById("mapa-analise").style.display = "none";
+    new L.Draw.Polygon(mapa, { allowIntersection: false, showArea: true }).enable();
+    statusEl.textContent = "clique no mapa para começar o polígono";
+  });
+
+  document.getElementById("btn-editar").addEventListener("click", () => {
+    if (!desenhados.getLayers().length) {
+      alert("Nenhuma área para editar. Use 'Desenhar área' primeiro.");
+      return;
+    }
+    new L.EditToolbar.Edit(mapa, { featureGroup: desenhados }).enable();
+    statusEl.textContent = "arraste os vértices para ajustar";
+  });
+
+  document.getElementById("btn-limpar").addEventListener("click", () => {
+    desenhados.clearLayers();
+    overlay.clearLayers();
+    sincronizarGeoJSON();
+    document.getElementById("mapa-analise").style.display = "none";
+  });
+
+  // ---------- APLICAR SUGESTÕES ----------
+  document.getElementById("btn-aplicar-sugestoes").addEventListener("click", () => {
+    const info = window.__ultimaAnalise;
+    if (!info) return;
+
+    function setValor(id, v) {
+      const el = document.getElementById(id);
+      if (el) el.value = v;
+    }
+    setValor("id_partida_lat", info.partida.lat.toFixed(6));
+    setValor("id_partida_lon", info.partida.lon.toFixed(6));
+    setValor("id_chegada_lat", info.chegada.lat.toFixed(6));
+    setValor("id_chegada_lon", info.chegada.lon.toFixed(6));
+    setValor("id_angulo_linhas_graus", info.angulo_ideal_graus);
+
+    const esp = document.getElementById("id_espacamento_linhas_m");
+    if (esp && (esp.value === "" || esp.value === "50")) {
+      esp.value = info.espacamento_sugerido_m;
+    }
+    statusEl.textContent = "sugestões aplicadas";
+  });
+
+  // ---------- SUBMIT ----------
+  document.getElementById("plano-form").addEventListener("submit", (ev) => {
+    if (!campoHidden.value) {
+      ev.preventDefault();
+      alert("Desenhe a área de operação no mapa antes de salvar.");
+    }
+  });
+
+  // ---------- AMBIENTE ----------
+  const btnCond      = document.getElementById("btn-ver-condicoes");
+  const painelAmb    = document.getElementById("painel-ambiente");
+  const corpoAmb     = document.getElementById("ambiente-corpo");
+  const avisoAmb     = document.getElementById("ambiente-aviso");
+  const atualizadoEl = document.getElementById("ambiente-atualizado");
+
+  function centroideSimples(geojson) {
+    let geo = geojson;
+    if (geo.type === "Feature") geo = geo.geometry;
+    const anel = (geo.coordinates || [[]])[0];
+    if (!anel.length) return null;
+    const lons = anel.map(p => p[0]);
+    const lats = anel.map(p => p[1]);
+    return {
+      lat: lats.reduce((a, b) => a + b, 0) / lats.length,
+      lon: lons.reduce((a, b) => a + b, 0) / lons.length,
+    };
+  }
+  function fmtNum(v, c = 1, s = "") { return v == null ? "—" : Number(v).toFixed(c) + s; }
+
+  function renderAmbiente(d) {
+    painelAmb.style.display = "";
+    if (!d.ok && d.erro) {
+      corpoAmb.innerHTML = `<div class="ambiente-aviso">Erro: ${d.erro}</div>`;
+      atualizadoEl.textContent = "erro";
+      return;
+    }
+    const cards = [
+      { label: "Ondas",    valor: fmtNum(d.ondas?.altura_m, 2, " m"),          nivel: d.ondas?.nivel    || "indisponivel", cor: d.ondas?.cor    || "cinza", extra: d.ondas?.periodo_s ? `período ${fmtNum(d.ondas.periodo_s, 1, " s")}` : "" },
+      { label: "Vento",    valor: fmtNum(d.vento?.velocidade_kmh, 1, " km/h"), nivel: d.vento?.nivel    || "indisponivel", cor: d.vento?.cor    || "cinza", extra: d.vento?.rajada_kmh ? `rajada ${fmtNum(d.vento.rajada_kmh, 1, " km/h")}` : "" },
+      { label: "Corrente", valor: fmtNum(d.corrente?.velocidade_kmh, 2, " km/h"), nivel: d.corrente?.nivel || "indisponivel", cor: d.corrente?.cor || "cinza", extra: "" },
+      { label: "Temp. mar", valor: fmtNum(d.temperatura_mar_c, 1, " °C"),      nivel: "", cor: "", extra: "" },
+    ];
+    corpoAmb.innerHTML = `
+      <div class="ambiente-grid">
+        ${cards.map(c => `
+          <div class="ambiente-card ${c.cor}">
+            <div class="ambiente-label">${c.label}</div>
+            <div class="ambiente-valor">${c.valor}</div>
+            <div class="ambiente-nivel ${c.cor}">${c.nivel || ""}</div>
+            ${c.extra ? `<div class="ambiente-label" style="margin-top:4px;">${c.extra}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    `;
+    atualizadoEl.textContent = d.fetched_at
+      ? `atualizado ${new Date(d.fetched_at).toLocaleTimeString()}` : "—";
+    if (d.aviso) { avisoAmb.style.display = ""; avisoAmb.textContent = d.aviso; }
+    else { avisoAmb.style.display = "none"; }
+  }
+
+  btnCond.addEventListener("click", async () => {
+    if (!campoHidden.value) { alert("Desenhe a área primeiro."); return; }
+    const c = centroideSimples(JSON.parse(campoHidden.value));
+    if (!c) return;
+    btnCond.disabled = true;
+    const original = btnCond.textContent;
+    btnCond.textContent = "Consultando...";
+    try {
+      const r = await fetch(`${urlPonto}?lat=${c.lat}&lon=${c.lon}`, {
+        headers: { "Accept": "application/json" },
+        credentials: "same-origin",
+      });
+      const d = await r.json();
+      renderAmbiente(d);
+    } catch (e) {
+      painelAmb.style.display = "";
+      corpoAmb.innerHTML = `<div class="ambiente-aviso">Falha de rede.</div>`;
+    } finally {
+      btnCond.disabled = false;
+      btnCond.textContent = original;
+    }
+  });
+
+  // ---------- CARREGAR ÁREA EXISTENTE (edição) ----------
+  if (areaInicial) {
+    let geojson = areaInicial;
+    if (geojson.type === "Polygon" || geojson.type === "MultiPolygon") {
+      geojson = { type: "Feature", geometry: geojson, properties: {} };
+    }
+    const layer = L.geoJSON(geojson, {
+      style: { color: "#7f9dbf", weight: 2, fillOpacity: .12, dashArray: "4 4" },
+    });
+    layer.eachLayer(l => desenhados.addLayer(l));
+    try { mapa.fitBounds(layer.getBounds().pad(0.2)); } catch (e) {}
+    sincronizarGeoJSON();
+    processarDesenho();
+  }
+})();
+</script>
+
+{% endblock %}

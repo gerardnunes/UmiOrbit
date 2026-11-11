@@ -54,8 +54,19 @@ urlpatterns = [
     path("aprovacoes/<int:pk>/rejeitar/", views.RejeitarUsuarioView.as_view(), name="aprovacoes_rejeitar"),
     path("telemetria/", views.TelemetriaView.as_view(), name="telemetria"),
     path("api/telemetria/", views.api_telemetria, name="api_telemetria"),
-]
 
+
+    path("planner/", views.MissionPlanListView.as_view(), name="mission_plan_list"),
+    path("planner/novo/", views.MissionPlanCreateView.as_view(), name="mission_plan_create"),
+    path("planner/<int:pk>/", views.MissionPlanDetailView.as_view(), name="mission_plan_detail"),
+    path("planner/<int:pk>/editar/", views.MissionPlanUpdateView.as_view(), name="mission_plan_update"),
+    path("planner/<int:pk>/gerar-rota/", views.GerarRotaView.as_view(), name="gerar_rota"),
+    path("planner/<int:pk>/otimizar-waypoints/", views.OtimizarWaypointsView.as_view(), name="otimizar_waypoints"),
+    path("planner/<int:pk>/ambiente/", views.CondicoesAmbientaisView.as_view(), name="condicoes_ambientais"),
+    path("planner/ambiente/ponto/", views.CondicoesPontoView.as_view(), name="condicoes_ponto"),
+    path("planner/analisar-area/", views.AnalisarAreaView.as_view(), name="analisar_area"),
+    path("api/telemetria/ingest/", views.ingest_telemetria, name="ingest_telemetria"),
+]
 
 path(
     "checklists/modelo.xlsx",

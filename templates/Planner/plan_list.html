@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block titulo %}Mission Planner{% endblock %}
+
+{% block conteudo %}
+
+<div class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Planejamento de missão</div>
+    <h1>Planos de missão</h1>
+    <div class="pagina-meta">
+      <span>{{ paginator.count }} plano{% if paginator.count != 1 %}s{% endif %}</span>
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <a href="{% url 'mission_plan_create' %}" class="btn">+ Novo plano</a>
+  </div>
+</div>
+
+<div class="console">
+  <section class="painel">
+    <header class="painel-titulo">
+      <span>Planos</span>
+      <span class="painel-titulo-acao">{{ paginator.count }}</span>
+    </header>
+
+    <div class="tabela-wrap painel-tabela-wrap">
+      <table class="tabela">
+        <thead>
+          <tr>
+            <th class="mono" style="width:60px;">#</th>
+            <th>Plano</th>
+            <th style="width:180px;">Sistema</th>
+            <th style="width:150px;">Padrão</th>
+            <th style="width:140px;">Status</th>
+            <th style="width:120px;">Distância</th>
+            <th style="width:120px;">Tempo</th>
+            <th style="width:80px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in planos %}
+            <tr>
+              <td class="mono">#{{ p.pk }}</td>
+              <td>
+                <strong>{{ p.nome }}</strong>
+                {% if p.missao %}
+                  <div class="truncar-suave">Missão: {{ p.missao.titulo }}</div>
+                {% endif %}
+              </td>
+              <td>{{ p.sistema.nome|default:"—" }}</td>
+              <td>{{ p.get_padrao_rota_display }}</td>
+              <td>
+                <span class="status-pill status-{{ p.status|lower }}">
+                  {{ p.get_status_display }}
+                </span>
+              </td>
+              <td class="mono suave">
+                {% if p.distancia_total_m %}
+                  {{ p.distancia_total_m|floatformat:0 }} m
+                {% else %}—{% endif %}
+              </td>
+              <td class="mono suave">
+                {% if p.tempo_estimado_min %}
+                  {{ p.tempo_estimado_min|floatformat:0 }} min
+                {% else %}—{% endif %}
+              </td>
+              <td>
+                <a class="btn btn-mini" href="{% url 'mission_plan_detail' p.pk %}">Ver</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="8" class="tabela-vazio">
+                Nenhum plano criado ainda.
+                <a href="{% url 'mission_plan_create' %}">Criar o primeiro</a>.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+      <div class="paginacao">
+        {% if page_obj.has_previous %}
+          <a class="btn btn-mini" href="?page={{ page_obj.previous_page_number }}">‹ anterior</a>
+        {% endif %}
+        <span class="mono suave">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="btn btn-mini" href="?page={{ page_obj.next_page_number }}">próxima ›</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<style>
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: .72rem;
+  font-weight: 500;
+  background: rgba(255,255,255,.06);
+  color: var(--texto-suave, #aab);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.status-pill.status-draft               { color: #94a3b8; }
+.status-pill.status-planned             { color: #7f9dbf; border-color: rgba(127,157,191,.3); }
+.status-pill.status-under_risk_analysis { color: #d4a24c; border-color: rgba(212,162,76,.3); }
+.status-pill.status-approved            { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.status-pill.status-in_progress         { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.status-pill.status-completed           { color: #7f9dbf; }
+.status-pill.status-aborted             { color: #c47a7a; border-color: rgba(196,122,122,.3); }
+
+.tabela td { vertical-align: middle; }
+.truncar-suave { font-size: .75rem; color: var(--texto-suave, #aab); margin-top: 2px; }
+.suave { color: #64748b; }
+.btn-mini { padding: 5px 10px; font-size: .78rem; }
+.tabela-vazio { text-align: center; color: var(--texto-suave, #aab); padding: 24px; }
+.tabela-vazio a { color: var(--texto, #e6edf3); text-decoration: underline; text-underline-offset: 3px; }
+.paginacao { display: flex; gap: 12px; align-items: center; justify-content: flex-end; padding: 12px 14px; }
+</style>
+
+{% endblock %}

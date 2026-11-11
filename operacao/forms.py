@@ -1,7 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-
 from .models import (
     Checklist,
     ChecklistImportacao,
@@ -13,13 +12,17 @@ from .models import (
     IncidenteStatus,
     IncidenteTipo,
     Missao,
+    MissionPlan,      # <-- adicionar
     Perfil,
     Prioridade,
+    Route,            # <-- adicionar
     Sistema,
     Status,
     StatusMissao,
     Tipo,
+    Waypoint,         # <-- adicionar
 )
+
 
 User = get_user_model()
 
@@ -524,3 +527,125 @@ class SelecionarSistemasForm(forms.Form):
         self.fields["sistemas"].queryset = (
             Sistema.objects.filter(ativo=True).order_by("ordem", "nome")
         )
+
+
+class ChecklistForm(forms.ModelForm):
+    class Meta:
+        model = Checklist
+        fields = ["titulo", "descricao", "sistema", "missao", "status"]
+        widgets = {
+            "descricao": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        if self.user is not None:
+            sistemas_qs = _sistemas_do_usuario(self.user)
+            self.fields["sistema"].queryset = sistemas_qs
+            if sistemas_qs.count() == 1:
+                self.fields["sistema"].initial = sistemas_qs.first()
+
+            qs_missao = Missao.objects.filter(
+                sistema__in=_sistemas_do_usuario(self.user),
+                status__in=[
+                    StatusMissao.PREPARACAO,
+                    StatusMissao.EM_OPERACAO,
+                    StatusMissao.PAUSADA,
+                ],
+            ).order_by("-criado_em")
+        else:
+            qs_missao = Missao.objects.filter(
+                status__in=[
+                    StatusMissao.PREPARACAO,
+                    StatusMissao.EM_OPERACAO,
+                    StatusMissao.PAUSADA,
+                ],
+            ).order_by("-criado_em")
+
+        # Mantém a missão atual no qs se estiver editando
+        if self.instance and self.instance.pk and self.instance.missao_id:
+            qs_missao = Missao.objects.filter(
+                Q(pk=self.instance.missao_id) | Q(pk__in=qs_missao.values("pk"))
+            ).order_by("-criado_em")
+
+        self.fields["missao"].queryset = qs_missao
+        self.fields["sistema"].required = False
+        self.fields["missao"].required = False
+# =========================================================
+# MISSION PLANNER
+# =========================================================
+from django.core.exceptions import ValidationError as _DjangoValidationError
+
+
+class MissionPlanForm(forms.ModelForm):
+    area_geojson = forms.JSONField(
+        widget=forms.HiddenInput(attrs={"id": "id_area_geojson"}),
+        required=True,
+    )
+
+    class Meta:
+        model = MissionPlan
+        fields = (
+            "nome", "sistema", "missao", "padrao_rota",
+            "partida_lat", "partida_lon",
+            "chegada_lat", "chegada_lon",
+            "velocidade_planejada_nos", "espacamento_linhas_m",
+            "sobreposicao_pct", "margem_seguranca_m",
+            "angulo_linhas_graus", "area_geojson",
+        )
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control"}),
+            "sistema": forms.Select(attrs={"class": "form-control"}),
+            "missao": forms.Select(attrs={"class": "form-control"}),
+            "padrao_rota": forms.Select(attrs={"class": "form-control"}),
+            "partida_lat": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001"}),
+            "partida_lon": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001"}),
+            "chegada_lat": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001"}),
+            "chegada_lon": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001"}),
+            "velocidade_planejada_nos": forms.NumberInput(attrs={"class": "form-control", "step": "0.1"}),
+            "espacamento_linhas_m": forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+            "sobreposicao_pct": forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+            "margem_seguranca_m": forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+            "angulo_linhas_graus": forms.NumberInput(attrs={"class": "form-control", "step": "1"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        # Reusa o helper que já existe neste arquivo
+        if self.user is not None:
+            sistemas_qs = _sistemas_do_usuario(self.user)
+            self.fields["sistema"].queryset = sistemas_qs
+            if sistemas_qs.count() == 1:
+                self.fields["sistema"].initial = sistemas_qs.first()
+
+        self.fields["sistema"].required = True
+
+        self.fields["missao"].queryset = (
+            Missao.objects.select_related("sistema").order_by("-criado_em")[:50]
+        )
+        self.fields["missao"].required = False
+        self.fields["missao"].empty_label = "— Sem missão vinculada —"
+
+    def clean_area_geojson(self):
+        geo = self.cleaned_data.get("area_geojson")
+        if not geo:
+            raise _DjangoValidationError("Desenhe a área de operação no mapa.")
+        if isinstance(geo, dict) and geo.get("type") == "Feature":
+            geo = geo.get("geometry") or {}
+        if not isinstance(geo, dict) or geo.get("type") not in ("Polygon", "MultiPolygon"):
+            raise _DjangoValidationError("A área precisa ser um polígono.")
+        if not geo.get("coordinates"):
+            raise _DjangoValidationError("Geometria vazia.")
+        return geo
+
+    def clean(self):
+        cleaned = super().clean()
+        sistema = cleaned.get("sistema")
+        missao = cleaned.get("missao")
+        if missao and sistema and missao.sistema_id != sistema.pk:
+            self.add_error("missao", "A missão selecionada não pertence a este sistema.")
+        return cleaned

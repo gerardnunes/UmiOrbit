@@ -547,6 +547,7 @@ def salvar_radares(sistema, radares):
 def processar_zmq(sock, sistema, duracao=2.0):
     n_pos = n_prop = n_gps = n_radar = 0
     deadline = time.time() + duracao
+    
     while time.time() < deadline:
         try:
             topico = sock.recv()
@@ -578,4 +579,142 @@ def processar_zmq(sock, sistema, duracao=2.0):
                 salvar_radares(sistema, radares)
                 n_radar = len(radares)
 
+        elif topico == b"20401_142004":
+            dados = decodificar_bateria(payload)
+            if dados:
+                salvar_bateria(sistema, dados)
+
+        elif topico == b"10102_142004":
+            luzes = decodificar_luzes(payload)
+            if luzes:
+                salvar_luzes(sistema, luzes)
+
     return n_pos, n_prop, n_gps, n_radar
+
+# =========================================================
+# BATERIA (20401_142004)
+# =========================================================
+def decodificar_bateria(payload: bytes) -> dict | None:
+    try:
+        pos = 0
+        res = {"temperatura": None, "celulas": None, "contador": None}
+        while pos < len(payload):
+            tag, pos = _read_varint(payload, pos)
+            fn = tag >> 3
+            wt = tag & 7
+            if wt == 2:
+                ln, pos = _read_varint(payload, pos)
+                sub = payload[pos:pos + ln]
+                pos += ln
+                if fn == 5:  # Sub-mensagem da bateria
+                    p = 0
+                    while p < len(sub):
+                        t2, p = _read_varint(sub, p)
+                        f2 = t2 >> 3
+                        w2 = t2 & 7
+                        if w2 == 0:
+                            v2, p = _read_varint(sub, p)
+                            # Interpreta como signed int32
+                            s32 = struct.unpack("<i", struct.pack("<I", v2 & 0xFFFFFFFF))[0]
+                            if f2 == 1: res["celulas"] = s32
+                            elif f2 == 2: res["temperatura"] = float(s32)
+                        elif w2 == 5 and p + 4 <= len(sub):
+                            f = struct.unpack("<f", sub[p:p+4])[0]
+                            if f2 == 4: res["contador"] = f
+                            p += 4
+                        elif w2 == 2:
+                            l2, p = _read_varint(sub, p)
+                            p += l2
+                        elif w2 == 1:
+                            p += 8
+                        else:
+                            break
+            elif wt == 0: _, pos = _read_varint(payload, pos)
+            elif wt == 5: pos += 4
+            elif wt == 1: pos += 8
+            else: break
+        return res if res["temperatura"] is not None else None
+    except Exception:
+        return None
+
+def salvar_bateria(sistema, dados):
+    from .models import StatusBateria
+    return StatusBateria.objects.create(
+        sistema=sistema,
+        temperatura=dados.get("temperatura"),
+        celulas=dados.get("celulas"),
+        contador=dados.get("contador")
+    )
+
+# =========================================================
+# LUZES (10102_142004)
+# =========================================================
+def decodificar_luzes(payload: bytes) -> list[dict]:
+    try:
+        pos = 0
+        luzes = []
+        while pos < len(payload):
+            tag, pos = _read_varint(payload, pos)
+            fn = tag >> 3
+            wt = tag & 7
+            if wt == 2:
+                ln, pos = _read_varint(payload, pos)
+                sub = payload[pos:pos + ln]
+                pos += ln
+                if fn == 5:  # Lista de itens
+                    p = 0
+                    while p < len(sub):
+                        t2, p = _read_varint(sub, p)
+                        f2 = t2 >> 3
+                        w2 = t2 & 7
+                        if w2 == 2:
+                            l2, p = _read_varint(sub, p)
+                            item = sub[p:p + l2]
+                            p += l2
+                            nome, status = _parse_luz(item)
+                            if nome:
+                                luzes.append({"nome": nome, "status": status})
+                        elif w2 == 0: _, p = _read_varint(sub, p)
+                        elif w2 == 5: p += 4
+                        elif w2 == 1: p += 8
+                        else: break
+            elif wt == 0: _, pos = _read_varint(payload, pos)
+            elif wt == 5: pos += 4
+            elif wt == 1: pos += 8
+            else: break
+        return luzes
+    except Exception:
+        return []
+
+def _parse_luz(data: bytes):
+    nome = None
+    status = 0
+    pos = 0
+    while pos < len(data):
+        tag, pos = _read_varint(data, pos)
+        fn = tag >> 3
+        wt = tag & 7
+        if wt == 2:
+            ln, pos = _read_varint(data, pos)
+            sub = data[pos:pos + ln]
+            pos += ln
+            if fn == 2: # Nome em chinês
+                nome = sub.decode("utf-8", errors="replace")
+        elif wt == 0:
+            v, pos = _read_varint(data, pos)
+            if fn == 3: # Status (0x28=40 ON, 0x0B=11 OFF)
+                status = v
+        elif wt == 5: pos += 4
+        elif wt == 1: pos += 8
+        else: break
+    return nome, status
+
+def salvar_luzes(sistema, luzes):
+    from .models import StatusLuz
+    StatusLuz.objects.filter(sistema=sistema).delete()
+    for l in luzes:
+        StatusLuz.objects.create(
+            sistema=sistema,
+            nome=l["nome"],
+            status=l["status"]
+        )

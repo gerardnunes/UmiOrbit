@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block titulo %}{{ plano.nome }}{% endblock %}
+
+{% block conteudo %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="pagina-cabecalho">
+  <div class="pagina-cabecalho-esq">
+    <div class="pagina-kicker">Plano #{{ plano.pk }} · {{ plano.sistema.nome }}</div>
+    <h1>{{ plano.nome }}</h1>
+    <div class="pagina-meta">
+      <span class="status-pill status-{{ plano.status|lower }}">{{ plano.get_status_display }}</span>
+      <span>{{ plano.get_padrao_rota_display }}</span>
+      {% if plano.missao %}<span>Missão: {{ plano.missao.titulo }}</span>{% endif %}
+      {% if plano.criado_por %}<span>{{ plano.criado_por.get_full_name|default:plano.criado_por.username }}</span>{% endif %}
+    </div>
+  </div>
+  <div class="pagina-cabecalho-dir">
+    <a href="{% url 'mission_plan_update' plano.pk %}" class="btn btn-secundario">Editar</a>
+    <button type="button" id="btn-gerar-rota" class="btn">Gerar rota</button>
+  </div>
+</div>
+
+<div class="console console-planner">
+
+  <section class="painel painel-mapa">
+    <header class="painel-titulo">
+      <span>Mapa da missão</span>
+      <span class="painel-titulo-acao" id="mapa-status">—</span>
+    </header>
+    <div id="mapa" style="height: 560px;"></div>
+  </section>
+
+  <section class="painel painel-dashboard">
+    <header class="painel-titulo"><span>Resumo</span></header>
+    <div class="painel-corpo">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Distância</div>
+          <div class="kpi-valor" id="kpi-distancia">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Tempo estimado</div>
+          <div class="kpi-valor" id="kpi-tempo">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Área de cobertura</div>
+          <div class="kpi-valor" id="kpi-area">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Waypoints</div>
+          <div class="kpi-valor" id="kpi-waypoints">—</div>
+        </div>
+      </div>
+
+      <div class="info-lista">
+        <div><span>Velocidade planejada</span><b>{{ plano.velocidade_planejada_nos }} kn</b></div>
+        <div><span>Espaçamento entre linhas</span><b>{{ plano.espacamento_linhas_m }} m</b></div>
+        <div><span>Sobreposição</span><b>{{ plano.sobreposicao_pct }}%</b></div>
+        <div><span>Margem de segurança</span><b>{{ plano.margem_seguranca_m }} m</b></div>
+        <div><span>Ângulo das linhas</span><b>{% if plano.angulo_linhas_graus %}{{ plano.angulo_linhas_graus }}°{% else %}auto{% endif %}</b></div>
+      </div>
+
+      {% if rota %}
+        <div class="info-lista">
+          <div><span>Rota gerada em</span><b>{{ rota.criado_em|date:"d/m/Y H:i" }}</b></div>
+          <div><span>Status da rota</span><b>{{ rota.get_status_display }}</b></div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="painel painel-ambiente">
+    <header class="painel-titulo">
+      <span>Condições ambientais (tempo real)</span>
+      <span class="painel-titulo-acao">
+        <span id="ambiente-atualizado" style="margin-right:8px;">—</span>
+        <button type="button" id="btn-atualizar-ambiente" class="btn btn-mini">Atualizar</button>
+      </span>
+    </header>
+    <div class="painel-corpo" id="ambiente-corpo">
+      <div class="ambiente-loading">Carregando condições...</div>
+    </div>
+    <div class="ambiente-aviso" id="ambiente-aviso" style="display:none;"></div>
+  </section>
+
+</div>
+
+<style>
+.console-planner {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-areas:
+    "mapa dashboard"
+    "ambiente ambiente";
+  gap: 16px;
+}
+.painel-mapa      { grid-area: mapa; }
+.painel-dashboard { grid-area: dashboard; }
+.painel-ambiente  { grid-area: ambiente; }
+
+@media (max-width: 1000px) {
+  .console-planner {
+    grid-template-columns: 1fr;
+    grid-template-areas: "mapa" "dashboard" "ambiente";
+  }
+}
+
+.painel-mapa #mapa { border-radius: 0 0 10px 10px; }
+.painel-corpo { padding: 14px; display: grid; gap: 14px; }
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kpi {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.kpi-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.kpi-valor { font-size: 1.15rem; font-weight: 600; margin-top: 4px; }
+.info-lista { display: grid; gap: 6px; font-size: .85rem; }
+.info-lista > div { display: flex; justify-content: space-between; gap: 12px; }
+.info-lista span { color: var(--texto-suave, #aab); }
+.info-lista b { color: var(--texto, #e6edf3); font-weight: 500; }
+
+.status-pill {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: .72rem; font-weight: 500;
+  background: rgba(255,255,255,.06); color: var(--texto-suave, #aab);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.status-pill.status-draft               { color: #94a3b8; }
+.status-pill.status-planned             { color: #7f9dbf; border-color: rgba(127,157,191,.3); }
+.status-pill.status-under_risk_analysis { color: #d4a24c; border-color: rgba(212,162,76,.3); }
+.status-pill.status-approved            { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.status-pill.status-in_progress         { color: #6fa86f; border-color: rgba(111,168,111,.3); }
+.status-pill.status-completed           { color: #7f9dbf; }
+.status-pill.status-aborted             { color: #c47a7a; border-color: rgba(196,122,122,.3); }
+
+.ambiente-loading { color: #94a3b8; font-size: .85rem; padding: 8px 0; }
+.ambiente-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.ambiente-card {
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  border-left: 3px solid transparent;
+}
+.ambiente-card.verde    { border-left-color: #6fa86f; }
+.ambiente-card.amarelo  { border-left-color: #d4a24c; }
+.ambiente-card.laranja  { border-left-color: #e0863c; }
+.ambiente-card.vermelho { border-left-color: #c47a7a; }
+.ambiente-card.cinza    { border-left-color: #64748b; }
+.ambiente-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.ambiente-valor { font-size: 1.15rem; font-weight: 600; margin-top: 2px; }
+.ambiente-nivel { font-size: .72rem; margin-top: 2px; text-transform: capitalize; }
+.ambiente-nivel.verde    { color: #6fa86f; }
+.ambiente-nivel.amarelo  { color: #d4a24c; }
+.ambiente-nivel.laranja  { color: #e0863c; }
+.ambiente-nivel.vermelho { color: #c47a7a; }
+.ambiente-nivel.cinza    { color: #64748b; }
+.ambiente-aviso {
+  font-size: .72rem;
+  color: #94a3b8;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.15);
+}
+</style>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  const areaInicial  = {{ area_geojson_inicial|safe }};
+  const rotaInicial  = {{ rota_geojson_inicial|safe }};
+  const urlGerarRota = "{% url 'gerar_rota' plano.pk %}";
+  const urlAmbiente  = "{% url 'condicoes_ambientais' plano.pk %}";
+
+  // ---------- MAPA ----------
+  const mapa = L.map("mapa").setView([-22.9, -43.2], 11);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap",
+  }).addTo(mapa);
+
+  function desenharArea(geo) {
+    if (!geo) return null;
+    const geojson = geo.type === "Feature"
+      ? geo
+      : { type: "Feature", geometry: geo, properties: {} };
+    const layer = L.geoJSON(geojson, {
+      style: { color: "#7f9dbf", weight: 2, fillOpacity: .08, dashArray: "4 4" },
+    }).addTo(mapa);
+    try { mapa.fitBounds(layer.getBounds().pad(0.2)); } catch (e) {}
+    return layer;
+  }
+
+  function desenharRota(geo) {
+    if (!geo) return null;
+    if (geo.type === "Feature") geo = geo.geometry;
+    const coords = (geo.coordinates || []).map(c => [c[1], c[0]]);
+    if (!coords.length) return null;
+
+    const linha = L.polyline(coords, {
+      color: "#6fa86f", weight: 3, opacity: .95,
+    }).addTo(mapa);
+
+    coords.forEach((pt, i) => {
+      const isInicio = i === 0;
+      const isFim    = i === coords.length - 1;
+      const cor      = isInicio ? "#6fa86f" : isFim ? "#c47a7a" : "#7f9dbf";
+      L.circleMarker(pt, {
+        radius: 4, color: cor, fillColor: cor, fillOpacity: .9, weight: 1,
+      }).bindTooltip(
+        `#${i + 1}${isInicio ? " · partida" : isFim ? " · chegada" : ""}`,
+        { direction: "top" }
+      ).addTo(mapa);
+    });
+
+    try { mapa.fitBounds(linha.getBounds().pad(0.2)); } catch (e) {}
+    return linha;
+  }
+
+  function formatarDistancia(m) {
+    if (m == null) return "—";
+    return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
+  }
+  function formatarTempo(min) {
+    if (min == null) return "—";
+    if (min < 60) return Math.round(min) + " min";
+    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    return `${h}h ${m.toString().padStart(2, "0")}min`;
+  }
+  function formatarArea(m2) {
+    if (!m2) return "—";
+    return m2 >= 1e6 ? (m2 / 1e6).toFixed(2) + " km²" : Math.round(m2) + " m²";
+  }
+
+  function preencherKpis(d) {
+    document.getElementById("kpi-distancia").textContent = formatarDistancia(d.distancia_m);
+    document.getElementById("kpi-tempo").textContent     = formatarTempo(d.tempo_min);
+    document.getElementById("kpi-area").textContent      = formatarArea(d.area_m2);
+    document.getElementById("kpi-waypoints").textContent = d.n_waypoints ?? "—";
+  }
+
+  desenharArea(areaInicial);
+  if (rotaInicial) {
+    desenharRota(rotaInicial);
+    preencherKpis({
+      distancia_m: {{ plano.distancia_total_m|default:0 }},
+      tempo_min:   {{ plano.tempo_estimado_min|default:0 }},
+      area_m2:     {{ plano.area_cobertura_m2|default:0 }},
+      n_waypoints: {{ plano.n_waypoints|default:0 }},
+    });
+    document.getElementById("mapa-status").textContent = "rota carregada";
+  } else if (areaInicial) {
+    document.getElementById("mapa-status").textContent = "sem rota gerada";
+  } else {
+    document.getElementById("mapa-status").textContent = "sem área";
+  }
+
+  const btn = document.getElementById("btn-gerar-rota");
+  btn.addEventListener("click", async () => {
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = "Gerando...";
+    document.getElementById("mapa-status").textContent = "gerando...";
+
+    try {
+      const resp = await fetch(urlGerarRota, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": "{{ csrf_token }}",
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+        },
+        credentials: "same-origin",
+      });
+      const data = await resp.json();
+
+      if (!data.ok) {
+        document.getElementById("mapa-status").textContent = "erro";
+        alert(data.erro || "Falha ao gerar rota.");
+        return;
+      }
+
+      mapa.eachLayer(l => {
+        if (l instanceof L.Polyline || l instanceof L.CircleMarker) {
+          mapa.removeLayer(l);
+        }
+      });
+      desenharRota(data.geometria);
+      preencherKpis(data);
+      document.getElementById("mapa-status").textContent = "rota gerada";
+      if (data.avisos && data.avisos.length) {
+        console.warn("Avisos do planejador:", data.avisos);
+      }
+    } catch (err) {
+      document.getElementById("mapa-status").textContent = "erro de rede";
+      alert("Falha de rede ao gerar a rota.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+
+  // ---------- AMBIENTE ----------
+  const corpo    = document.getElementById("ambiente-corpo");
+  const avisoEl  = document.getElementById("ambiente-aviso");
+  const btnAmb   = document.getElementById("btn-atualizar-ambiente");
+  const atualEl  = document.getElementById("ambiente-atualizado");
+
+  function fmtNum(v, casas = 1, suf = "") {
+    if (v == null) return "—";
+    return Number(v).toFixed(casas) + suf;
+  }
+
+  function renderAmbiente(d) {
+    if (!d.ok && d.erro) {
+      corpo.innerHTML = `<div class="ambiente-loading">Erro: ${d.erro}</div>`;
+      atualEl.textContent = "erro";
+      return;
+    }
+
+    const cards = [
+      {
+        label: "Ondas",
+        valor: fmtNum(d.ondas?.altura_m, 2, " m"),
+        nivel: d.ondas?.nivel || "indisponivel",
+        cor: d.ondas?.cor || "cinza",
+        extra: d.ondas?.periodo_s ? `período ${fmtNum(d.ondas.periodo_s, 1, " s")}` : "",
+      },
+      {
+        label: "Vento",
+        valor: fmtNum(d.vento?.velocidade_kmh, 1, " km/h"),
+        nivel: d.vento?.nivel || "indisponivel",
+        cor: d.vento?.cor || "cinza",
+        extra: d.vento?.rajada_kmh ? `rajada ${fmtNum(d.vento.rajada_kmh, 1, " km/h")}` : "",
+      },
+      {
+        label: "Corrente",
+        valor: fmtNum(d.corrente?.velocidade_kmh, 2, " km/h"),
+        nivel: d.corrente?.nivel || "indisponivel",
+        cor: d.corrente?.cor || "cinza",
+        extra: "",
+      },
+      {
+        label: "Temp. mar",
+        valor: fmtNum(d.temperatura_mar_c, 1, " °C"),
+        nivel: "",
+        cor: "",
+        extra: "",
+      },
+    ];
+
+    corpo.innerHTML = `
+      <div class="ambiente-grid">
+        ${cards.map(c => `
+          <div class="ambiente-card ${c.cor}">
+            <div class="ambiente-label">${c.label}</div>
+            <div class="ambiente-valor">${c.valor}</div>
+            <div class="ambiente-nivel ${c.cor}">${c.nivel || ""}</div>
+            ${c.extra ? `<div class="ambiente-label" style="margin-top:4px;">${c.extra}</div>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    `;
+
+    atualEl.textContent = d.fetched_at
+      ? `atualizado ${new Date(d.fetched_at).toLocaleTimeString()}`
+      : "—";
+
+    if (d.aviso) {
+      avisoEl.style.display = "";
+      avisoEl.textContent = d.aviso;
+    } else {
+      avisoEl.style.display = "none";
+    }
+  }
+
+  async function carregarAmbiente() {
+    btnAmb.disabled = true;
+    corpo.innerHTML = '<div class="ambiente-loading">Atualizando...</div>';
+    try {
+      const resp = await fetch(urlAmbiente, {
+        headers: { "Accept": "application/json" },
+        credentials: "same-origin",
+      });
+      const data = await resp.json();
+      renderAmbiente(data);
+    } catch (e) {
+      corpo.innerHTML = '<div class="ambiente-loading">Falha de rede.</div>';
+      atualEl.textContent = "erro";
+    } finally {
+      btnAmb.disabled = false;
+    }
+  }
+
+  btnAmb.addEventListener("click", carregarAmbiente);
+  carregarAmbiente();
+})();
+</script>
+
+{% endblock %}

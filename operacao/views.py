@@ -1,4 +1,6 @@
 import io
+import json
+import time as _time
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -14,6 +16,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView,
 )
@@ -21,18 +24,27 @@ from django.views.generic import (
 from .forms import (
     AtualizacaoForm, CadastroForm, ChecklistForm, ChecklistImportForm,
     DemandaForm, FiltroDemandaForm, IncidenteAnexoForm, IncidenteEventoForm,
-    IncidenteForm, MissaoForm, PerfilForm, SelecionarSistemasForm, UsuarioForm,
+    IncidenteForm, MissionPlanForm, MissaoForm, PerfilForm,
+    SelecionarSistemasForm, UsuarioForm,
 )
 from .mixins import SistemaScopedMixin
 from .models import (
     STATUS_ABERTOS, Atualizacao, Checklist, ChecklistImportacao,
     ChecklistItem, ChecklistItemEvento, ChecklistItemFoto, Demanda,
     Incidente, IncidenteAnexo, IncidenteEvento, IncidenteSeveridade,
-    IncidenteStatus, IncidenteTipo, Missao, Perfil, Prioridade, Sistema,
-    Status, StatusMissao, Tipo,
+    IncidenteStatus, IncidenteTipo, LeituraGuincho, LeituraPosicao,
+    LeituraPropulsor, Missao, MissionPlan, OrigemGPS, Perfil, Prioridade,
+    RadarDetectado, Route, Sistema, Status, StatusMissao, Tipo, Waypoint,
 )
 from .permissions import TrabalhadorRequiredMixin
 from .services import ler_excel, aplicar_import
+from .services.route_planner import (
+    analisar_area,
+    gerar_rota_lawn_mower,
+    gerar_rota_waypoints,
+    otimizar_waypoints_nearest_neighbor,
+)
+from .services.marine_weather import fetch_marine_conditions, conditions_to_dict
 
 User = get_user_model()
 
@@ -89,7 +101,6 @@ def _get_no_escopo(model, user, **lookup):
 
 
 def _sistema_do_usuario(user):
-    """Se o usuário só tem 1 sistema, retorna ele. Senão, None."""
     perfil = getattr(user, "perfil", None)
     if perfil and not perfil.is_diretor and not user.is_superuser:
         sistemas = perfil.sistemas.filter(ativo=True)
@@ -99,7 +110,6 @@ def _sistema_do_usuario(user):
 
 
 def _injetar_sistema_no_data(data, user):
-    """Se o form vier sem `sistema` e o usuário só tem 1, injeta antes de validar."""
     if not data:
         return data
     if data.get("sistema"):
@@ -208,7 +218,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             getattr(user, "perfil", None) and user.perfil.is_diretor
         )
 
-        # ---------------- Demandas ----------------
         demandas = Demanda.objects.filter(sistema__in=sistemas).select_related(
             "sistema", "responsavel", "missao"
         )
@@ -232,7 +241,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "problemas_barco": self._problemas_barco(abertas),
         })
 
-        # ---------------- Incidentes ----------------
         incidentes = Incidente.objects.filter(sistema__in=sistemas).select_related(
             "sistema", "responsavel"
         ).order_by("-ocorrido_em")
@@ -257,7 +265,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "incidentes_mapa": self._incidentes_mapa(abertos_inc),
         })
 
-        # ---------------- Estado ----------------
         n_bloqueantes = ctx["n_bloqueantes_demanda"] + ctx["n_bloqueantes_incidente"]
         ctx["n_bloqueantes"] = n_bloqueantes
 
@@ -280,7 +287,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         ctx.update({"estado": estado, "estado_titulo": titulo, "estado_texto": texto})
 
-        # ---------------- Missões ----------------
         missoes = Missao.objects.filter(sistema__in=sistemas)
         ativas = (
             missoes.filter(status__in=[
@@ -313,7 +319,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "missoes_ativas": missoes_ativas,
         })
 
-        # ---------------- Checklists ----------------
         checklists = Checklist.objects.filter(sistema__in=sistemas)
         checklists_ativos = []
         for c in checklists.filter(status=Checklist.Status.ATIVO).select_related(
@@ -333,7 +338,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "checklists_ativos": checklists_ativos,
         })
 
-        # ---------------- Fotos / diário / ambiente ----------------
         fotos = ChecklistItemFoto.objects.filter(
             item__checklist__sistema__in=sistemas
         ).select_related("item", "item__checklist", "enviado_por")
@@ -1724,10 +1728,11 @@ class RejeitarUsuarioView(View):
         messages.warning(request, f"{nome} rejeitado (conta desativada).")
         return redirect("aprovacoes_lista")
 
+
 # =========================================================
-# TELEMETRIA — dashboard + API
+# TELEMETRIA
 # =========================================================
-# # =========================================================
+# =========================================================
 # TELEMETRIA — dashboard + API
 # =========================================================
 from django.http import JsonResponse
@@ -1738,8 +1743,31 @@ from django.utils import timezone
 
 from .models import (
     LeituraGuincho, LeituraPosicao, LeituraPropulsor, 
-    OrigemGPS, RadarDetectado,
+    OrigemGPS, RadarDetectado, StatusBateria, StatusLuz,
 )
+
+# Dicionário para traduzir os nomes das luzes que vêm em chinês
+TRADUCAO_LUZES = {
+    "左外推进器电源": "Propulsor Esq. Externo",
+    "右外推进器电源": "Propulsor Dir. Externo",
+    "左内推进器电源": "Propulsor Esq. Interno",
+    "右内推进器电源": "Propulsor Dir. Interno",
+    "锚灯": "Luz de Âncora",
+    "NUC ≥ light": "Luz NUC",
+    "NUC ≤ light": "Luz NUC (Baixa)",
+    "Masthead light": "Luz do Mastro",
+    "Anchor light": "Luz de Fundeio",
+    "White stern light": "Luz de Popa",
+    "Navigation light": "Luz de Navegação",
+    "拖拽系统应用": "Sistema de Reboque",
+    "SVP绞车应用": "Guincho SVP",
+    "左片体舱底水": "Porão Esq.",
+    "右片体舱底水": "Porão Dir.",
+    "White": "Branca",
+    "左撒放": "Soltar Esq.",
+    "右撒放": "Soltar Dir.",
+    "自动油平衡": "Balanceamento Automático",
+}
 
 
 class TelemetriaView(LoginRequiredMixin, TemplateView):
@@ -1750,6 +1778,8 @@ class TelemetriaView(LoginRequiredMixin, TemplateView):
         sistemas = _sistemas_do_usuario(self.request.user)
         ctx["sistemas"] = sistemas
         ctx["agora"] = timezone.now()
+        
+        # Dados iniciais (para carregar a página mais rápido antes do JS)
         ctx["svp"] = LeituraGuincho.objects.filter(sistema__in=sistemas, tipo="SVP").order_by("-criado_em").first()
         ctx["tracao"] = LeituraGuincho.objects.filter(sistema__in=sistemas, tipo="TRACAO").order_by("-criado_em").first()
         ctx["posicao"] = LeituraPosicao.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
@@ -1760,6 +1790,7 @@ class TelemetriaView(LoginRequiredMixin, TemplateView):
 
 @login_required
 def api_telemetria(request):
+    """JSON com os últimos dados (pra auto-refresh do dashboard)."""
     sistemas = _sistemas_do_usuario(request.user)
 
     def _guincho(qs):
@@ -1781,6 +1812,7 @@ def api_telemetria(request):
     posicao = LeituraPosicao.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
     propulsor = LeituraPropulsor.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
     origem = OrigemGPS.objects.filter(sistema__in=sistemas).first()
+    bateria = StatusBateria.objects.filter(sistema__in=sistemas).order_by("-criado_em").first()
 
     # === Radares ===
     radares = list(
@@ -1788,6 +1820,19 @@ def api_telemetria(request):
         .values("nome", "x", "y", "distancia", "azimute", "qualidade")
     )
 
+    # === Luzes ===
+    luzes_db = StatusLuz.objects.filter(sistema__in=sistemas)
+    luzes = []
+    for l in luzes_db:
+        nome_traduzido = TRADUCAO_LUZES.get(l.nome, l.nome)
+        luzes.append({
+            "nome": nome_traduzido,
+            "status": l.status,
+        })
+    # Ordena as luzes alfabeticamente em português
+    luzes.sort(key=lambda x: x["nome"])
+
+    # === Rastro ===
     rastro = list(
         LeituraPosicao.objects.filter(sistema__in=sistemas)
         .order_by("-criado_em").values("x", "y", "criado_em")[:200]
@@ -1810,6 +1855,406 @@ def api_telemetria(request):
             "criado_em": propulsor.criado_em.isoformat(),
             "ts_atuadores": [propulsor.ts_atuador_1, propulsor.ts_atuador_2, propulsor.ts_atuador_3, propulsor.ts_atuador_4],
         } if propulsor else None,
-        "radares": radares,  # <=== A CHAVE ESTAVA FALTANDO
+        "bateria": {
+            "temperatura": bateria.temperatura if bateria else None,
+            "celulas": bateria.celulas if bateria else None,
+            "contador": bateria.contador if bateria else None,
+        } if bateria else None,
+        "radares": radares,
+        "luzes": luzes,
         "rastro": rastro,
     })
+@csrf_exempt
+def ingest_telemetria(request):
+    """
+    POST /api/telemetria/ingest/
+    Recebe dados do script externo (serial, MQTT, TCP) e grava no banco.
+
+    Body JSON:
+    {
+      "sistema_id": 1,
+      "tipo": "SVP" | "TRACAO" | "POSICAO" | "PROPULSOR" | "ORIGEM" | "RADAR",
+      "dados": { ... campos ... }
+    }
+
+    Autenticação: token no header X-Ingest-Token (settings.TELEMETRIA_INGEST_TOKEN).
+    """
+    from django.conf import settings as _settings
+
+    token_esperado = getattr(_settings, "TELEMETRIA_INGEST_TOKEN", None)
+    if token_esperado:
+        recebido = request.headers.get("X-Ingest-Token", "")
+        if recebido != token_esperado:
+            return JsonResponse({"ok": False, "erro": "token inválido"}, status=403)
+
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "erro": "use POST"}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except (ValueError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "erro": "JSON inválido"}, status=400)
+
+    tipo = (payload.get("tipo") or "").upper()
+    dados = payload.get("dados") or {}
+    sistema_id = payload.get("sistema_id")
+
+    if not sistema_id or tipo not in {"SVP", "TRACAO", "POSICAO", "PROPULSOR", "ORIGEM", "RADAR"}:
+        return JsonResponse(
+            {"ok": False, "erro": "sistema_id ou tipo inválido"}, status=400
+        )
+
+    try:
+        if tipo in {"SVP", "TRACAO"}:
+            campos = {
+                k: dados.get(k) for k in (
+                    "current_temp", "current_vol", "current_ele", "current_pull",
+                    "rope_speed", "pull_rope_len", "winch_rate",
+                    "current_work_status", "warn", "sys_time",
+                    "max_rope_len", "remain_min_rope_len", "sensor_once_rope_len",
+                    "winch_acc_speed_ratio", "winch_turn_rate_value",
+                )
+            }
+            LeituraGuincho.objects.create(sistema_id=sistema_id, tipo=tipo, **campos)
+        elif tipo == "POSICAO":
+            LeituraPosicao.objects.create(
+                sistema_id=sistema_id,
+                x=float(dados.get("x", 0)),
+                y=float(dados.get("y", 0)),
+                z=float(dados.get("z", 0)),
+                qw=float(dados.get("qw", 1.0)),
+                timestamp_msg=float(dados.get("timestamp_msg", _time.time())),
+            )
+        elif tipo == "PROPULSOR":
+            LeituraPropulsor.objects.create(
+                sistema_id=sistema_id,
+                steer=dados.get("steer"),
+                modo=dados.get("modo"),
+                timestamp_msg=float(dados.get("timestamp_msg", _time.time())),
+                ts_atuador_1=dados.get("ts_atuador_1"),
+                ts_atuador_2=dados.get("ts_atuador_2"),
+                ts_atuador_3=dados.get("ts_atuador_3"),
+                ts_atuador_4=dados.get("ts_atuador_4"),
+            )
+        elif tipo == "ORIGEM":
+            OrigemGPS.objects.update_or_create(
+                sistema_id=sistema_id,
+                defaults={
+                    "lat": float(dados["lat"]),
+                    "lon": float(dados["lon"]),
+                },
+            )
+        elif tipo == "RADAR":
+            RadarDetectado.objects.create(
+                sistema_id=sistema_id,
+                nome=str(dados.get("nome", ""))[:50],
+                x=float(dados.get("x", 0)),
+                y=float(dados.get("y", 0)),
+                distancia=float(dados.get("distancia", 0)),
+                azimute=float(dados.get("azimute", 0)),
+                timestamp=float(dados.get("timestamp", _time.time())),
+                qualidade=float(dados.get("qualidade", 0)),
+            )
+    except (KeyError, TypeError, ValueError) as exc:
+        return JsonResponse({"ok": False, "erro": str(exc)}, status=400)
+
+    return JsonResponse({"ok": True})
+
+
+# =========================================================
+# MISSION PLANNER
+# =========================================================
+_marine_cache: dict[tuple[float, float], tuple[float, dict]] = {}
+_MARINE_CACHE_TTL = 600
+
+
+def _planos_do_usuario(user):
+    if not user.is_authenticated:
+        return MissionPlan.objects.none()
+    perfil = getattr(user, "perfil", None)
+    if user.is_superuser or (perfil and perfil.is_diretor):
+        return MissionPlan.objects.all()
+    return MissionPlan.objects.filter(sistema__in=_sistemas_do_usuario(user))
+
+
+def _parse_payload(request):
+    if request.content_type and "application/json" in request.content_type:
+        try:
+            return json.loads(request.body.decode("utf-8") or "{}")
+        except (ValueError, UnicodeDecodeError):
+            return {}
+    return request.POST
+
+
+def _centroide_simples(geojson):
+    if not geojson:
+        return None
+    geo = geojson
+    if isinstance(geo, dict) and geo.get("type") == "Feature":
+        geo = geo.get("geometry") or {}
+    if not isinstance(geo, dict) or geo.get("type") != "Polygon":
+        return None
+    coords = geo.get("coordinates") or []
+    if not coords:
+        return None
+    anel = coords[0]
+    if not anel:
+        return None
+    lons = [p[0] for p in anel]
+    lats = [p[1] for p in anel]
+    return (sum(lats) / len(lats), sum(lons) / len(lons))
+
+
+def _waypoints_para_geojson(waypoints_latlon):
+    return {
+        "type": "LineString",
+        "coordinates": [[lon, lat] for lat, lon in waypoints_latlon],
+    }
+
+
+def _salvar_waypoints(rota, waypoints_latlon):
+    Waypoint.objects.filter(rota=rota).delete()
+    objs, total = [], len(waypoints_latlon)
+    for i, (lat, lon) in enumerate(waypoints_latlon):
+        if i == 0:
+            tipo = Waypoint.Tipo.PARTIDA
+        elif i == total - 1:
+            tipo = Waypoint.Tipo.CHEGADA
+        else:
+            tipo = Waypoint.Tipo.NAVEGACAO
+        objs.append(Waypoint(rota=rota, ordem=i, lat=lat, lon=lon, tipo=tipo))
+    if objs:
+        Waypoint.objects.bulk_create(objs)
+
+
+class _AreaGeoJSONMixin:
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        obj = getattr(self, "object", None)
+        ctx["area_geojson_inicial"] = (
+            json.dumps(obj.area_geojson) if obj and obj.area_geojson else "null"
+        )
+        return ctx
+
+
+class MissionPlanListView(LoginRequiredMixin, ListView):
+    model = MissionPlan
+    template_name = "planner/plan_list.html"
+    context_object_name = "planos"
+    paginate_by = 20
+
+    def get_queryset(self):
+        return (
+            _planos_do_usuario(self.request.user)
+            .select_related("sistema", "missao", "criado_por")
+            .order_by("-criado_em")
+        )
+
+
+class MissionPlanCreateView(_AreaGeoJSONMixin, LoginRequiredMixin, CreateView):
+    model = MissionPlan
+    form_class = MissionPlanForm
+    template_name = "planner/plan_form.html"
+
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["user"] = self.request.user
+        return kw
+
+    def form_valid(self, form):
+        form.instance.criado_por = self.request.user
+        messages.success(self.request, "Plano criado. Gere a rota.")
+        return super().form_valid(form)
+
+
+class MissionPlanUpdateView(_AreaGeoJSONMixin, LoginRequiredMixin, UpdateView):
+    model = MissionPlan
+    form_class = MissionPlanForm
+    template_name = "planner/plan_form.html"
+
+    def get_queryset(self):
+        return _planos_do_usuario(self.request.user)
+
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["user"] = self.request.user
+        return kw
+
+    def form_valid(self, form):
+        messages.success(self.request, "Plano atualizado.")
+        return super().form_valid(form)
+
+
+class MissionPlanDetailView(LoginRequiredMixin, DetailView):
+    model = MissionPlan
+    template_name = "planner/plan_detail.html"
+    context_object_name = "plano"
+
+    def get_queryset(self):
+        return _planos_do_usuario(self.request.user).select_related("sistema", "missao")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        plano = self.object
+        rota = plano.rotas.order_by("-criado_em").first()
+        ctx["rota"] = rota
+        ctx["waypoints"] = list(rota.waypoints.order_by("ordem")) if rota else []
+        ctx["area_geojson_inicial"] = (
+            json.dumps(plano.area_geojson) if plano.area_geojson else "null"
+        )
+        ctx["rota_geojson_inicial"] = (
+            json.dumps(rota.geometria_geojson)
+            if rota and rota.geometria_geojson else "null"
+        )
+        return ctx
+
+
+class GerarRotaView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        plano = get_object_or_404(_planos_do_usuario(request.user), pk=pk)
+
+        try:
+            if plano.padrao_rota == MissionPlan.PadraoRota.LAWN_MOWER:
+                if not plano.area_geojson:
+                    return JsonResponse(
+                        {"ok": False, "erro": "Desenhe a área antes de gerar a rota."},
+                        status=400,
+                    )
+                resultado = gerar_rota_lawn_mower(
+                    area_geojson=plano.area_geojson,
+                    espacamento_m=plano.espacamento_linhas_m,
+                    angulo_graus=plano.angulo_linhas_graus,
+                    velocidade_nos=plano.velocidade_planejada_nos,
+                )
+            else:
+                if not plano.area_geojson:
+                    return JsonResponse(
+                        {"ok": False, "erro": "Nenhum waypoint informado."},
+                        status=400,
+                    )
+                pts = [
+                    (c[1], c[0]) for c in
+                    (plano.area_geojson.get("coordinates") or [[]])[0]
+                ]
+                resultado = gerar_rota_waypoints(
+                    waypoints_latlon=pts,
+                    velocidade_nos=plano.velocidade_planejada_nos,
+                )
+        except ValueError as exc:
+            return JsonResponse({"ok": False, "erro": str(exc)}, status=400)
+
+        rota = Route.objects.create(
+            plano=plano,
+            nome=f"Rota {plano.nome}",
+            status=Route.Status.PLANNED,
+            geometria_geojson=_waypoints_para_geojson(resultado.waypoints),
+            distancia_total_m=resultado.distancia_total_m,
+            tempo_estimado_min=resultado.tempo_estimado_min,
+        )
+        _salvar_waypoints(rota, resultado.waypoints)
+
+        plano.distancia_total_m = resultado.distancia_total_m
+        plano.tempo_estimado_min = resultado.tempo_estimado_min
+        plano.area_cobertura_m2 = resultado.area_cobertura_m2
+        plano.n_waypoints = len(resultado.waypoints)
+        plano.save(update_fields=[
+            "distancia_total_m", "tempo_estimado_min",
+            "area_cobertura_m2", "n_waypoints", "atualizado_em",
+        ])
+
+        return JsonResponse({
+            "ok": True,
+            "rota_id": rota.pk,
+            "geometria": rota.geometria_geojson,
+            "distancia_m": resultado.distancia_total_m,
+            "tempo_min": resultado.tempo_estimado_min,
+            "area_m2": resultado.area_cobertura_m2,
+            "n_waypoints": len(resultado.waypoints),
+            "avisos": resultado.avisos,
+            "url_detalhe": reverse("mission_plan_detail", args=[plano.pk]),
+        })
+
+
+class OtimizarWaypointsView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        plano = get_object_or_404(_planos_do_usuario(request.user), pk=pk)
+        dados = _parse_payload(request)
+        pontos = dados.get("pontos") or []
+        if not isinstance(pontos, list) or len(pontos) < 2:
+            return JsonResponse(
+                {"ok": False, "erro": "Envie pelo menos 2 pontos."}, status=400
+            )
+        try:
+            pts = [(float(p["lat"]), float(p["lon"])) for p in pontos]
+        except (KeyError, TypeError, ValueError):
+            return JsonResponse(
+                {"ok": False, "erro": "Formato inválido dos pontos."}, status=400
+            )
+
+        otimizados = otimizar_waypoints_nearest_neighbor(pts)
+        return JsonResponse({
+            "ok": True,
+            "pontos": [{"lat": lat, "lon": lon} for lat, lon in otimizados],
+        })
+
+
+class CondicoesAmbientaisView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        plano = get_object_or_404(_planos_do_usuario(request.user), pk=pk)
+
+        centro = _centroide_simples(plano.area_geojson)
+        if not centro:
+            return JsonResponse(
+                {"ok": False, "erro": "Plano sem área definida."}, status=400
+            )
+        lat, lon = centro
+
+        chave = (round(lat, 3), round(lon, 3))
+        agora = _time.time()
+        if chave in _marine_cache:
+            ts, dados = _marine_cache[chave]
+            if agora - ts < _MARINE_CACHE_TTL:
+                return JsonResponse(dados)
+
+        cond = fetch_marine_conditions(lat, lon)
+        dados = conditions_to_dict(cond)
+        _marine_cache[chave] = (agora, dados)
+        return JsonResponse(dados)
+
+
+class CondicoesPontoView(LoginRequiredMixin, View):
+    def get(self, request):
+        try:
+            lat = float(request.GET.get("lat", ""))
+            lon = float(request.GET.get("lon", ""))
+        except (TypeError, ValueError):
+            return JsonResponse(
+                {"ok": False, "erro": "Parâmetros lat/lon inválidos."}, status=400
+            )
+
+        chave = (round(lat, 3), round(lon, 3))
+        agora = _time.time()
+        if chave in _marine_cache:
+            ts, dados = _marine_cache[chave]
+            if agora - ts < _MARINE_CACHE_TTL:
+                return JsonResponse(dados)
+
+        cond = fetch_marine_conditions(lat, lon)
+        dados = conditions_to_dict(cond)
+        _marine_cache[chave] = (agora, dados)
+        return JsonResponse(dados)
+
+
+class AnalisarAreaView(LoginRequiredMixin, View):
+    def post(self, request):
+        dados = _parse_payload(request)
+        area = dados.get("area_geojson")
+        if not area:
+            return JsonResponse(
+                {"ok": False, "erro": "Área não enviada."}, status=400
+            )
+        try:
+            info = analisar_area(area)
+        except Exception as exc:
+            return JsonResponse({"ok": False, "erro": str(exc)}, status=400)
+        return JsonResponse({"ok": True, "info": info})
