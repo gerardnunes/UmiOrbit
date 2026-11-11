@@ -1033,8 +1033,7 @@ class MissionPlan(models.Model):
         return f"Plano #{self.pk} · {self.nome}"
 
     def get_absolute_url(self):
-        return reverse("mission_planner:plan_detail", args=[self.pk])
-
+        return reverse("mission_plan_detail", args=[self.pk])
 
 class Route(models.Model):
     class Status(models.TextChoices):
