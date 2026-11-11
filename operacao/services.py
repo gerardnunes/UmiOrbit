@@ -399,7 +399,8 @@ Algoritmos suportados:
 Coordenadas de entrada/saída: (lat, lon) em WGS84.
 Projeção interna: equirectangular local (metros) centrada no centróide.
 """
-from __future__ import annotations
+
+
 
 import math
 from dataclasses import dataclass, field
