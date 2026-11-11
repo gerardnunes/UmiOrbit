@@ -211,7 +211,7 @@ LOGGING = {
         },
     },
 }
-
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 TELEMETRIA_INGEST_TOKEN = "troque-este-token-em-producao"
 TEMPLATES[0]["OPTIONS"]["context_processors"] += [
     "operacao.context_processors.aprovacoes_pendentes",
