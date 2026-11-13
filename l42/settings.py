@@ -2,7 +2,10 @@
 """Configurações do sistema de gestão operacional do L42."""
 import os
 from pathlib import Path
+from os import getenv
+from dotenv import load_dotenv
 
+load_dotenv()
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
