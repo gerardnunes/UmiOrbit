@@ -5,6 +5,15 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+{% csrf_token %}
+
+{{ plano.distancia_total_m|default:0|json_script:"plano-distancia" }}
+{{ plano.tempo_estimado_min|default:0|json_script:"plano-tempo" }}
+{{ plano.area_cobertura_m2|default:0|json_script:"plano-area" }}
+{{ plano.n_waypoints|default:0|json_script:"plano-waypoints" }}
+{{ area_geojson_inicial|json_script:"area-inicial" }}
+{{ rota_geojson_inicial|json_script:"rota-inicial" }}
+
 <div class="pagina-cabecalho">
   <div class="pagina-cabecalho-esq">
     <div class="pagina-kicker">Plano #{{ plano.pk }} · {{ plano.sistema.nome }}</div>
@@ -66,6 +75,10 @@
         <div class="info-lista">
           <div><span>Rota gerada em</span><b>{{ rota.criado_em|date:"d/m/Y H:i" }}</b></div>
           <div><span>Status da rota</span><b>{{ rota.get_status_display }}</b></div>
+        </div>
+      {% else %}
+        <div class="info-lista">
+          <div><span>Rota</span><b style="color:#d4a24c;">ainda não gerada</b></div>
         </div>
       {% endif %}
     </div>
@@ -175,55 +188,141 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function () {
-  const areaInicial  = {{ area_geojson_inicial|safe }};
-  const rotaInicial  = {{ rota_geojson_inicial|safe }};
-  const urlGerarRota = "{% url 'gerar_rota' plano.pk %}";
-  const urlAmbiente  = "{% url 'condicoes_ambientais' plano.pk %}";
+  "use strict";
+
+  // ---------- LÊ DADOS DO SERVIDOR (json_script é à prova de locale) ----------
+  function lerJSON(id, fallback) {
+    var el = document.getElementById(id);
+    if (!el) return fallback;
+    try { return JSON.parse(el.textContent); }
+    catch (e) { return fallback; }
+  }
+
+  var planoDistancia = lerJSON("plano-distancia", 0) || 0;
+  var planoTempo     = lerJSON("plano-tempo", 0) || 0;
+  var planoArea      = lerJSON("plano-area", 0) || 0;
+  var planoWaypoints = lerJSON("plano-waypoints", 0) || 0;
+  var areaInicial    = lerJSON("area-inicial", null);
+  var rotaInicial    = lerJSON("rota-inicial", null);
+
+  if (!areaInicial || typeof areaInicial !== "object" || !areaInicial.type) {
+    areaInicial = null;
+  }
+  if (rotaInicial && rotaInicial.type === "Feature") {
+    rotaInicial = rotaInicial.geometry || null;
+  }
+  if (rotaInicial && (rotaInicial.type !== "LineString" || !rotaInicial.coordinates || !rotaInicial.coordinates.length)) {
+    rotaInicial = null;
+  }
+
+  window.__debug = {
+    planoDistancia: planoDistancia,
+    planoTempo: planoTempo,
+    planoArea: planoArea,
+    planoWaypoints: planoWaypoints,
+    areaInicial: areaInicial,
+    rotaInicial: rotaInicial,
+  };
+
+  var urlGerarRota = "{% url 'gerar_rota' plano.pk %}";
+  var urlAmbiente  = "{% url 'condicoes_ambientais' plano.pk %}";
+  var csrfToken    = "{{ csrf_token }}";
+
+  function $(id) { return document.getElementById(id); }
 
   // ---------- MAPA ----------
-  const mapa = L.map("mapa").setView([-22.9, -43.2], 11);
+  if (typeof L === "undefined") {
+    var m = $("mapa");
+    if (m) {
+      m.style.background = "#1e293b";
+      m.style.color = "#b85a5a";
+      m.style.padding = "20px";
+      m.style.textAlign = "center";
+      m.style.fontFamily = "monospace";
+      m.textContent = "Leaflet não carregou do CDN. Verifique a conexão e recarregue.";
+    }
+    $("mapa-status").textContent = "leaflet não carregou";
+    return;
+  }
+
+  var mapa = L.map("mapa").setView([-20.3, -40.3], 11);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19, attribution: "&copy; OpenStreetMap",
   }).addTo(mapa);
 
+  var rotaLayer = null;
+  var marcadoresRota = [];
+
   function desenharArea(geo) {
     if (!geo) return null;
-    const geojson = geo.type === "Feature"
+    var geojson = (geo.type === "Feature")
       ? geo
       : { type: "Feature", geometry: geo, properties: {} };
-    const layer = L.geoJSON(geojson, {
-      style: { color: "#7f9dbf", weight: 2, fillOpacity: .08, dashArray: "4 4" },
-    }).addTo(mapa);
-    try { mapa.fitBounds(layer.getBounds().pad(0.2)); } catch (e) {}
-    return layer;
+    try {
+      var layer = L.geoJSON(geojson, {
+        style: { color: "#7f9dbf", weight: 2, fillOpacity: .08, dashArray: "4 4" },
+      }).addTo(mapa);
+      try { mapa.fitBounds(layer.getBounds().pad(0.2)); } catch (e) {}
+      return layer;
+    } catch (e) {
+      console.error("desenharArea:", e);
+      return null;
+    }
+  }
+
+  function limparRota() {
+    if (rotaLayer) { mapa.removeLayer(rotaLayer); rotaLayer = null; }
+    for (var i = 0; i < marcadoresRota.length; i++) {
+      try { mapa.removeLayer(marcadoresRota[i]); } catch (e) {}
+    }
+    marcadoresRota = [];
   }
 
   function desenharRota(geo) {
     if (!geo) return null;
     if (geo.type === "Feature") geo = geo.geometry;
-    const coords = (geo.coordinates || []).map(c => [c[1], c[0]]);
+    if (!geo || geo.type !== "LineString" || !geo.coordinates || !geo.coordinates.length) {
+      return null;
+    }
+
+    var coords = [];
+    for (var i = 0; i < geo.coordinates.length; i++) {
+      var c = geo.coordinates[i];
+      if (c && c.length >= 2 && typeof c[0] === "number" && typeof c[1] === "number") {
+        coords.push([c[1], c[0]]);
+      }
+    }
     if (!coords.length) return null;
 
-    const linha = L.polyline(coords, {
-      color: "#6fa86f", weight: 3, opacity: .95,
-    }).addTo(mapa);
+    try {
+      rotaLayer = L.polyline(coords, {
+        color: "#6fa86f", weight: 3, opacity: .95,
+      }).addTo(mapa);
+    } catch (e) {
+      console.error("desenharRota:", e);
+      return null;
+    }
 
-    coords.forEach((pt, i) => {
-      const isInicio = i === 0;
-      const isFim    = i === coords.length - 1;
-      const cor      = isInicio ? "#6fa86f" : isFim ? "#c47a7a" : "#7f9dbf";
-      L.circleMarker(pt, {
-        radius: 4, color: cor, fillColor: cor, fillOpacity: .9, weight: 1,
-      }).bindTooltip(
-        `#${i + 1}${isInicio ? " · partida" : isFim ? " · chegada" : ""}`,
-        { direction: "top" }
-      ).addTo(mapa);
-    });
+    for (var j = 0; j < coords.length; j++) {
+      var isInicio = j === 0;
+      var isFim    = j === coords.length - 1;
+      var cor      = isInicio ? "#6fa86f" : isFim ? "#c47a7a" : "#7f9dbf";
+      try {
+        var mk = L.circleMarker(coords[j], {
+          radius: 4, color: cor, fillColor: cor, fillOpacity: .9, weight: 1,
+        }).bindTooltip(
+          "#" + (j + 1) + (isInicio ? " · partida" : isFim ? " · chegada" : ""),
+          { direction: "top" }
+        ).addTo(mapa);
+        marcadoresRota.push(mk);
+      } catch (e) {}
+    }
 
-    try { mapa.fitBounds(linha.getBounds().pad(0.2)); } catch (e) {}
-    return linha;
+    try { mapa.fitBounds(rotaLayer.getBounds().pad(0.2)); } catch (e) {}
+    return rotaLayer;
   }
 
+  // ---------- FORMATADORES ----------
   function formatarDistancia(m) {
     if (m == null) return "—";
     return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
@@ -231,120 +330,137 @@
   function formatarTempo(min) {
     if (min == null) return "—";
     if (min < 60) return Math.round(min) + " min";
-    const h = Math.floor(min / 60), m = Math.round(min % 60);
-    return `${h}h ${m.toString().padStart(2, "0")}min`;
+    var h = Math.floor(min / 60), mm = Math.round(min % 60);
+    return h + "h " + (mm < 10 ? "0" + mm : mm) + "min";
   }
   function formatarArea(m2) {
     if (!m2) return "—";
     return m2 >= 1e6 ? (m2 / 1e6).toFixed(2) + " km²" : Math.round(m2) + " m²";
   }
-
   function preencherKpis(d) {
-    document.getElementById("kpi-distancia").textContent = formatarDistancia(d.distancia_m);
-    document.getElementById("kpi-tempo").textContent     = formatarTempo(d.tempo_min);
-    document.getElementById("kpi-area").textContent      = formatarArea(d.area_m2);
-    document.getElementById("kpi-waypoints").textContent = d.n_waypoints ?? "—";
+    if (!d) return;
+    $("kpi-distancia").textContent = formatarDistancia(d.distancia_m);
+    $("kpi-tempo").textContent     = formatarTempo(d.tempo_min);
+    $("kpi-area").textContent      = formatarArea(d.area_m2);
+    $("kpi-waypoints").textContent = (d.n_waypoints != null) ? d.n_waypoints : "—";
   }
 
+  // ---------- RENDER INICIAL ----------
   desenharArea(areaInicial);
+
   if (rotaInicial) {
-    desenharRota(rotaInicial);
-    preencherKpis({
-      distancia_m: {{ plano.distancia_total_m|default:0 }},
-      tempo_min:   {{ plano.tempo_estimado_min|default:0 }},
-      area_m2:     {{ plano.area_cobertura_m2|default:0 }},
-      n_waypoints: {{ plano.n_waypoints|default:0 }},
-    });
-    document.getElementById("mapa-status").textContent = "rota carregada";
+    if (desenharRota(rotaInicial)) {
+      preencherKpis({
+        distancia_m: planoDistancia,
+        tempo_min:   planoTempo,
+        area_m2:     planoArea,
+        n_waypoints: planoWaypoints,
+      });
+      $("mapa-status").textContent = "rota carregada";
+    } else {
+      $("mapa-status").textContent = "rota inválida no banco";
+    }
   } else if (areaInicial) {
-    document.getElementById("mapa-status").textContent = "sem rota gerada";
+    $("mapa-status").textContent = "sem rota gerada";
+    // centraliza na área mesmo sem rota
+    try {
+      var tmp = L.geoJSON(areaInicial.type === "Feature" ? areaInicial : { type: "Feature", geometry: areaInicial, properties: {} });
+      mapa.fitBounds(tmp.getBounds().pad(0.2));
+    } catch (e) {}
   } else {
-    document.getElementById("mapa-status").textContent = "sem área";
+    $("mapa-status").textContent = "sem área";
   }
 
-  const btn = document.getElementById("btn-gerar-rota");
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    const original = btn.textContent;
-    btn.textContent = "Gerando...";
-    document.getElementById("mapa-status").textContent = "gerando...";
+  // ---------- BOTÃO GERAR ROTA ----------
+  var btn = $("btn-gerar-rota");
+  if (btn) {
+    btn.addEventListener("click", async function () {
+      btn.disabled = true;
+      var original = btn.textContent;
+      btn.textContent = "Gerando...";
+      $("mapa-status").textContent = "gerando...";
 
-    try {
-      const resp = await fetch(urlGerarRota, {
-        method: "POST",
-        headers: {
-          "X-CSRFToken": "{{ csrf_token }}",
-          "X-Requested-With": "XMLHttpRequest",
-          "Accept": "application/json",
-        },
-        credentials: "same-origin",
-      });
-      const data = await resp.json();
+      try {
+        var resp = await fetch(urlGerarRota, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken,
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json",
+          },
+          credentials: "same-origin",
+        });
 
-      if (!data.ok) {
-        document.getElementById("mapa-status").textContent = "erro";
-        alert(data.erro || "Falha ao gerar rota.");
-        return;
-      }
+        var data = await resp.json().catch(function () { return {}; });
 
-      mapa.eachLayer(l => {
-        if (l instanceof L.Polyline || l instanceof L.CircleMarker) {
-          mapa.removeLayer(l);
+        if (!resp.ok || !data.ok) {
+          $("mapa-status").textContent = "erro " + resp.status;
+          alert("Falha ao gerar rota: " + (data.erro || ("HTTP " + resp.status)));
+          return;
         }
-      });
-      desenharRota(data.geometria);
-      preencherKpis(data);
-      document.getElementById("mapa-status").textContent = "rota gerada";
-      if (data.avisos && data.avisos.length) {
-        console.warn("Avisos do planejador:", data.avisos);
+
+        limparRota();
+        if (!desenharRota(data.geometria)) {
+          $("mapa-status").textContent = "geometria vazia";
+          alert("A rota foi criada, mas a geometria voltou vazia.");
+          return;
+        }
+        preencherKpis(data);
+        $("mapa-status").textContent = "rota gerada";
+        if (data.avisos && data.avisos.length) {
+          console.warn("Avisos do planejador:", data.avisos);
+        }
+      } catch (err) {
+        $("mapa-status").textContent = "erro de rede";
+        console.error("Gerar rota:", err);
+        alert("Falha de rede ao gerar a rota.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
       }
-    } catch (err) {
-      document.getElementById("mapa-status").textContent = "erro de rede";
-      alert("Falha de rede ao gerar a rota.");
-    } finally {
-      btn.disabled = false;
-      btn.textContent = original;
-    }
-  });
+    });
+  }
 
   // ---------- AMBIENTE ----------
-  const corpo    = document.getElementById("ambiente-corpo");
-  const avisoEl  = document.getElementById("ambiente-aviso");
-  const btnAmb   = document.getElementById("btn-atualizar-ambiente");
-  const atualEl  = document.getElementById("ambiente-atualizado");
+  var corpo    = $("ambiente-corpo");
+  var avisoEl  = $("ambiente-aviso");
+  var btnAmb   = $("btn-atualizar-ambiente");
+  var atualEl  = $("ambiente-atualizado");
 
-  function fmtNum(v, casas = 1, suf = "") {
+  function fmtNum(v, casas, suf) {
+    casas = (casas == null) ? 1 : casas;
+    suf = suf || "";
     if (v == null) return "—";
     return Number(v).toFixed(casas) + suf;
   }
 
   function renderAmbiente(d) {
-    if (!d.ok && d.erro) {
-      corpo.innerHTML = `<div class="ambiente-loading">Erro: ${d.erro}</div>`;
+    if (!d || (!d.ok && d.erro)) {
+      corpo.innerHTML = '<div class="ambiente-loading">Erro: ' + ((d && d.erro) || "desconhecido") + "</div>";
       atualEl.textContent = "erro";
       return;
     }
 
-    const cards = [
+    var cards = [
       {
         label: "Ondas",
-        valor: fmtNum(d.ondas?.altura_m, 2, " m"),
-        nivel: d.ondas?.nivel || "indisponivel",
-        cor: d.ondas?.cor || "cinza",
-        extra: d.ondas?.periodo_s ? `período ${fmtNum(d.ondas.periodo_s, 1, " s")}` : "",
+        valor: fmtNum(d.ondas && d.ondas.altura_m, 2, " m"),
+        nivel: (d.ondas && d.ondas.nivel) || "indisponivel",
+        cor: (d.ondas && d.ondas.cor) || "cinza",
+        extra: (d.ondas && d.ondas.periodo_s) ? "período " + fmtNum(d.ondas.periodo_s, 1, " s") : "",
       },
       {
         label: "Vento",
-        valor: fmtNum(d.vento?.velocidade_kmh, 1, " km/h"),
-        nivel: d.vento?.nivel || "indisponivel",
-        cor: d.vento?.cor || "cinza",
-        extra: d.vento?.rajada_kmh ? `rajada ${fmtNum(d.vento.rajada_kmh, 1, " km/h")}` : "",
+        valor: fmtNum(d.vento && d.vento.velocidade_kmh, 1, " km/h"),
+        nivel: (d.vento && d.vento.nivel) || "indisponivel",
+        cor: (d.vento && d.vento.cor) || "cinza",
+        extra: (d.vento && d.vento.rajada_kmh) ? "rajada " + fmtNum(d.vento.rajada_kmh, 1, " km/h") : "",
       },
       {
         label: "Corrente",
-        valor: fmtNum(d.corrente?.velocidade_kmh, 2, " km/h"),
-        nivel: d.corrente?.nivel || "indisponivel",
-        cor: d.corrente?.cor || "cinza",
+        valor: fmtNum(d.corrente && d.corrente.velocidade_kmh, 2, " km/h"),
+        nivel: (d.corrente && d.corrente.nivel) || "indisponivel",
+        cor: (d.corrente && d.corrente.cor) || "cinza",
         extra: "",
       },
       {
@@ -356,21 +472,21 @@
       },
     ];
 
-    corpo.innerHTML = `
-      <div class="ambiente-grid">
-        ${cards.map(c => `
-          <div class="ambiente-card ${c.cor}">
-            <div class="ambiente-label">${c.label}</div>
-            <div class="ambiente-valor">${c.valor}</div>
-            <div class="ambiente-nivel ${c.cor}">${c.nivel || ""}</div>
-            ${c.extra ? `<div class="ambiente-label" style="margin-top:4px;">${c.extra}</div>` : ""}
-          </div>
-        `).join("")}
-      </div>
-    `;
+    var html = '<div class="ambiente-grid">';
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i];
+      html += '<div class="ambiente-card ' + c.cor + '">';
+      html += '<div class="ambiente-label">' + c.label + '</div>';
+      html += '<div class="ambiente-valor">' + c.valor + '</div>';
+      html += '<div class="ambiente-nivel ' + c.cor + '">' + (c.nivel || "") + '</div>';
+      if (c.extra) html += '<div class="ambiente-label" style="margin-top:4px;">' + c.extra + '</div>';
+      html += '</div>';
+    }
+    html += "</div>";
+    corpo.innerHTML = html;
 
     atualEl.textContent = d.fetched_at
-      ? `atualizado ${new Date(d.fetched_at).toLocaleTimeString()}`
+      ? "atualizado " + new Date(d.fetched_at).toLocaleTimeString()
       : "—";
 
     if (d.aviso) {
@@ -382,24 +498,24 @@
   }
 
   async function carregarAmbiente() {
-    btnAmb.disabled = true;
+    if (btnAmb) btnAmb.disabled = true;
     corpo.innerHTML = '<div class="ambiente-loading">Atualizando...</div>';
     try {
-      const resp = await fetch(urlAmbiente, {
+      var resp = await fetch(urlAmbiente, {
         headers: { "Accept": "application/json" },
         credentials: "same-origin",
       });
-      const data = await resp.json();
+      var data = await resp.json();
       renderAmbiente(data);
     } catch (e) {
       corpo.innerHTML = '<div class="ambiente-loading">Falha de rede.</div>';
       atualEl.textContent = "erro";
     } finally {
-      btnAmb.disabled = false;
+      if (btnAmb) btnAmb.disabled = false;
     }
   }
 
-  btnAmb.addEventListener("click", carregarAmbiente);
+  if (btnAmb) btnAmb.addEventListener("click", carregarAmbiente);
   carregarAmbiente();
 })();
 </script>

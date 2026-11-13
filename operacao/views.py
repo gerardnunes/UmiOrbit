@@ -2097,17 +2097,18 @@ class MissionPlanDetailView(LoginRequiredMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         plano = self.object
         rota = plano.rotas.order_by("-criado_em").first()
+
         ctx["rota"] = rota
         ctx["waypoints"] = list(rota.waypoints.order_by("ordem")) if rota else []
-        ctx["area_geojson_inicial"] = (
-            json.dumps(plano.area_geojson) if plano.area_geojson else "null"
-        )
-        ctx["rota_geojson_inicial"] = (
-            json.dumps(rota.geometria_geojson)
-            if rota and rota.geometria_geojson else "null"
-        )
-        return ctx
 
+        # IMPORTANTE: manda dict/None, NÃO string JSON.
+        # O json_script do template serializa. Se mandar string, dá double-encode.
+        ctx["area_geojson_inicial"] = plano.area_geojson or None
+        ctx["rota_geojson_inicial"] = (
+            rota.geometria_geojson if rota and rota.geometria_geojson else None
+        ) or None
+
+        return ctx
 
 class GerarRotaView(LoginRequiredMixin, View):
     def post(self, request, pk):
