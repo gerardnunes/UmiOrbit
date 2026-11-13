@@ -94,8 +94,17 @@ WSGI_APPLICATION = "l42.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": getenv("PGDATABASE"),
+        "USER": getenv("PGUSER"),
+        "PASSWORD": getenv("PGPASSWORD"),
+        "HOST": getenv("PGHOST"),
+        "PORT": getenv("PGPORT", "5432"),
+        "OPTIONS": {
+            "sslmode": "require",
+        },
+        "CONN_MAX_AGE": 0,          # Neon suspende após 5 min de inatividade
+        "CONN_HEALTH_CHECKS": True,  # evita erro de conexão fechada
     }
 }
 
