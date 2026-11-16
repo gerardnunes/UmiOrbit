@@ -1,156 +1,185 @@
 {% load static op %}<!doctype html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titulo %}Painel{% endblock %} · L42</title>
-<link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Painel{% endblock %} · L42</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
+
 {% if user.is_authenticated %}
-{# no topo do template, para não repetir query em loop #}
-{% if user.is_superuser or user.perfil.is_diretor %}
-  <a href="{% url 'aprovacoes_lista' %}" class="menu-item">
-    Aprovações
-    {% with n=user.is_superuser|yesno:"x,x" %}{% endwith %}
-    {% if aprovacoes_pendentes_count %}
-      <span class="badge">{{ aprovacoes_pendentes_count }}</span>
-    {% endif %}
-  </a>
-{% endif %}
-<div class="bridge">
 
-  <!-- ============================================
-       RAIL LATERAL (menu tipo painel de instrumentos)
-       ============================================ -->
-  <aside class="rail">
-    <a class="rail-marca" href="{% url 'dashboard' %}">
-      <span class="rail-marca-simbolo" style="display:inline-flex;align-items:center;justify-content:center;line-height:0;">
-        <!-- Logo UMI ORBIT (by UMI SAN): boia náutica + órbita + ondas -->
-        <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Umi Orbit by Umi San">
-          <defs>
-            <linearGradient id="uo-fundo" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#1e40af"/>
-              <stop offset="1" stop-color="#0ea5e9"/>
-            </linearGradient>
-            <clipPath id="uo-recorte"><rect x="1" y="1" width="38" height="38" rx="12"/></clipPath>
-          </defs>
-          <g clip-path="url(#uo-recorte)">
-            <rect x="1" y="1" width="38" height="38" fill="url(#uo-fundo)"/>
-            <!-- órbita: metade de trás -->
-            <g transform="rotate(-20 20 19)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
-              <path d="M5 19 A15 5.2 0 0 1 35 19" stroke-opacity=".4"/>
+  {% with u=request.resolver_match.url_name %}
+
+  <div class="bridge">
+
+    <!-- ============================================
+         RAIL LATERAL
+         ============================================ -->
+    <aside class="rail">
+
+      <a class="rail-marca" href="{% url 'dashboard' %}" aria-label="UMI Orbit — ir para o painel">
+        <span class="rail-marca-simbolo">
+          <!-- Logo UMI ORBIT (by UMI SAN): boia náutica + órbita + ondas -->
+          <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Umi Orbit by Umi San">
+            <defs>
+              <linearGradient id="uo-fundo" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#1e40af"/>
+                <stop offset="1" stop-color="#0ea5e9"/>
+              </linearGradient>
+              <clipPath id="uo-recorte"><rect x="1" y="1" width="38" height="38" rx="12"/></clipPath>
+            </defs>
+            <g clip-path="url(#uo-recorte)">
+              <rect x="1" y="1" width="38" height="38" fill="url(#uo-fundo)"/>
+              <g transform="rotate(-20 20 19)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
+                <path d="M5 19 A15 5.2 0 0 1 35 19" stroke-opacity=".4"/>
+              </g>
+              <rect x="19" y="7.5" width="2" height="5" rx="1" fill="#ffffff"/>
+              <circle cx="20" cy="6.6" r="2.6" fill="#fde047"/>
+              <circle cx="20" cy="19" r="7" fill="#ffffff"/>
+              <path d="M13.1 20.2 H26.9" stroke="#ef4444" stroke-width="3" fill="none"/>
+              <circle cx="17.6" cy="16.4" r="1.6" fill="#dbeafe"/>
+              <path d="M0 26.5 q5 -3 10 0 t10 0 t10 0 t10 0 V40 H0 Z" fill="#0b2a6b" fill-opacity=".85"/>
+              <path d="M0 31 q5 -3 10 0 t10 0 t10 0 t10 0" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.6" stroke-linecap="round"/>
+              <g transform="rotate(-20 20 19)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
+                <path d="M5 19 A15 5.2 0 0 0 35 19"/>
+                <circle cx="35" cy="19" r="3" fill="#fde047" stroke="none"/>
+              </g>
             </g>
-            <!-- boia: mastro, luz e corpo -->
-            <rect x="19" y="7.5" width="2" height="5" rx="1" fill="#ffffff"/>
-            <circle cx="20" cy="6.6" r="2.6" fill="#fde047"/>
-            <circle cx="20" cy="19" r="7" fill="#ffffff"/>
-            <path d="M13.1 20.2 H26.9" stroke="#ef4444" stroke-width="3" fill="none"/>
-            <circle cx="17.6" cy="16.4" r="1.6" fill="#dbeafe"/>
-            <!-- água -->
-            <path d="M0 26.5 q5 -3 10 0 t10 0 t10 0 t10 0 V40 H0 Z" fill="#0b2a6b" fill-opacity=".85"/>
-            <path d="M0 31 q5 -3 10 0 t10 0 t10 0 t10 0" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.6" stroke-linecap="round"/>
-            <!-- órbita: metade da frente + satélite -->
-            <g transform="rotate(-20 20 19)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
-              <path d="M5 19 A15 5.2 0 0 0 35 19"/>
-              <circle cx="35" cy="19" r="3" fill="#fde047" stroke="none"/>
-            </g>
-          </g>
-        </svg>
-      </span>
-      <span class="rail-marca-texto">
-        <strong>UMI ORBIT</strong>
-        <small>by UMI SAN · v2.4</small>
-      </span>
-    </a>
+          </svg>
+        </span>
+        <span class="rail-marca-texto">
+          <strong>UMI ORBIT</strong>
+          <small>by UMI SAN · v2.4</small>
+        </span>
+      </a>
 
-    {% with u=request.resolver_match.url_name %}
-    <nav class="rail-nav">
-      <div class="rail-grupo">
-        <div class="rail-grupo-titulo">Operação</div>
-        <a href="{% url 'dashboard' %}" class="{% if u == 'dashboard' %}ativo{% endif %}">
-          <span class="ic">▦</span><span>Visão geral</span>
-        </a>
-        <a href="{% url 'missoes' %}" class="{% if u == 'missoes' %}ativo{% endif %}">
-          <span class="ic">≡</span><span>Missões</span>
-        </a>
-        <a href="{% url 'mission_plan_list' %}" class="{% if u == 'mission_plan_list' or u == 'mission_plan_create' or u == 'mission_plan_detail' or u == 'mission_plan_update' %}ativo{% endif %}">
-  <span class="ic">▤</span><span>Planejamento de Missão</span>
-</a>
-       
+      <nav class="rail-nav" aria-label="Menu principal">
+
+        <div class="rail-grupo">
+          <div class="rail-grupo-titulo">Operação</div>
+          <a href="{% url 'dashboard' %}"
+             class="{% if u == 'dashboard' %}ativo{% endif %}"
+             {% if u == 'dashboard' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">▦</span><span>Visão geral</span>
+          </a>
+          <a href="{% url 'missoes' %}"
+             class="{% if u == 'missoes' %}ativo{% endif %}"
+             {% if u == 'missoes' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">≡</span><span>Missões</span>
+          </a>
+          <a href="{% url 'mission_plan_list' %}"
+             class="{% if u == 'mission_plan_list' or u == 'mission_plan_create' or u == 'mission_plan_detail' or u == 'mission_plan_update' %}ativo{% endif %}"
+             {% if u == 'mission_plan_list' or u == 'mission_plan_create' or u == 'mission_plan_detail' or u == 'mission_plan_update' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">▤</span><span>Planejamento de Missão</span>
+          </a>
+        </div>
+
+        <div class="rail-grupo">
+          <div class="rail-grupo-titulo">Equipamento</div>
+          <a href="{% url 'demanda_lista' %}"
+             class="{% if u == 'demanda_lista' %}ativo{% endif %}"
+             {% if u == 'demanda_lista' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">▥</span><span>Demanda</span>
+          </a>
+          <a href="{% url 'manutencao' %}"
+             class="{% if u == 'manutencao' %}ativo{% endif %}"
+             {% if u == 'manutencao' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">⚙</span><span>Manutenção</span>
+          </a>
+        </div>
+
+        <div class="rail-grupo">
+          <div class="rail-grupo-titulo">Registro</div>
+          <a href="{% url 'incidente_lista' %}"
+             class="{% if u == 'incidente_lista' %}ativo{% endif %}"
+             {% if u == 'incidente_lista' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">☑</span><span>Incidentes</span>
+          </a>
+          <a href="{% url 'checklist_lista' %}"
+             class="{% if u == 'checklist_lista' %}ativo{% endif %}"
+             {% if u == 'checklist_lista' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">☑</span><span>Checklists</span>
+          </a>
+        </div>
+
+        <div class="rail-grupo">
+          <div class="rail-grupo-titulo">Sistema</div>
+
+          {% if user.is_superuser or user.perfil.is_diretor %}
+            <a href="{% url 'aprovacoes_lista' %}"
+               class="rail-aprovacoes {% if u == 'aprovacoes_lista' %}ativo{% endif %}"
+               {% if u == 'aprovacoes_lista' %}aria-current="page"{% endif %}>
+              <span class="ic" aria-hidden="true">✓</span>
+              <span>Aprovações</span>
+              {% if aprovacoes_pendentes_count %}
+                <span class="badge" aria-label="{{ aprovacoes_pendentes_count }} pendentes">
+                  {{ aprovacoes_pendentes_count }}
+                </span>
+              {% endif %}
+            </a>
+          {% endif %}
+
+          <a href="{% url 'equipe' %}"
+             class="{% if u == 'equipe' %}ativo{% endif %}"
+             {% if u == 'equipe' %}aria-current="page"{% endif %}>
+            <span class="ic" aria-hidden="true">♟</span><span>Equipe</span>
+          </a>
+        </div>
+
+      </nav>
+
+      <div class="rail-rodape">
+        <div class="rail-pill {{ estado|lower }}">
+          <span class="dot" aria-hidden="true"></span>{{ estado_titulo }}
+        </div>
+        <small class="rail-rodape-hora">{% now "d/m H:i" %} UTC-3</small>
       </div>
 
-      <div class="rail-grupo">
-        <div class="rail-grupo-titulo">Equipamento</div>
-        <a href="{% url 'demanda_lista' %}">Demanda</a>
-        <a href="{% url 'manutencao' %}">Manutenção</a>
-      </div>
+    </aside>
 
-      <div class="rail-grupo">
-        <div class="rail-grupo-titulo">Registro</div>
-        <a href="{% url 'incidente_lista' %}">
-          <span class="ic">☑</span>
-          <span>Incidentes</span>
-        </a>
-        <a href="{% url 'checklist_lista' %}">
-          <span class="ic">☑</span>
-          <span>Checklists</span>
-        </a>
-        <a href="#"><span class="ic">≡</span><span>Relatórios</span></a>
-      </div>
+    <!-- ============================================
+         ÁREA PRINCIPAL
+         ============================================ -->
+    <div class="bridge-main">
 
-      <div class="rail-grupo">
-        <div class="rail-grupo-titulo">Sistema</div>
-        <a href="{% url 'equipe' %}"><span class="ic">♟</span><span>Equipe</span></a>
-        <a href="#"><span class="ic">▤</span><span>Auditoria</span></a>
-      </div>
-    </nav>
-    {% endwith %}
+        <div class="faixa-dir">
+          <span class="faixa-usuario">
+            {{ user|nome }}
+            <span class="papel">{{ papel_label }}</span>
+          </span>
+          <form method="post" action="{% url 'logout' %}" class="faixa-sair">
+            {% csrf_token %}
+            <button type="submit">sair</button>
+          </form>
+        </div>
+      </header>
 
-    <div class="rail-rodape">
-      <div class="rail-pill {{ estado|lower }}">
-        <span class="dot"></span>{{ estado_titulo }}
-      </div>
-      <small class="rail-rodape-hora">{% now "d/m H:i" %} UTC-3</small>
+      <main class="bridge-conteudo">
+        {% if messages %}
+          <ul class="msgs" role="status">
+            {% for m in messages %}
+              <li class="{{ m.tags }}">{{ m }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        {% block conteudo %}{% endblock %}
+      </main>
+
     </div>
-  </aside>
-
-  <!-- ============================================
-       ÁREA PRINCIPAL
-       ============================================ -->
-  <div class="bridge-main">
-
-    <!-- BARRA SUPERIOR (faixa fina, tipo cabeçalho de console) -->
-    <header class="faixa">
-      <div class="faixa-esq">
-        <span class="faixa-selo">USV</span>
-        <span class="faixa-nome">Umi Polaris <b>L42</b></span>
-        <span class="faixa-sep">|</span>
-        <span class="faixa-info">IMO {{ embarcacao.imo|default:"—" }}</span>
-        <span class="faixa-info">MMSI {{ embarcacao.mmsi|default:"—" }}</span>
-        <span class="faixa-info">Base {{ embarcacao.base|default:"Açu · RJ" }}</span>
-      </div>
-      <div class="faixa-dir">
-        <button class="faixa-btn" title="Notificações">🔔<span class="faixa-badge">3</span></button>
-        <span class="faixa-usuario">{{ user|nome }} <span class="papel">{{ papel_label }}</span></span>
-        <form method="post" action="{% url 'logout' %}" class="faixa-sair">
-          {% csrf_token %}<button type="submit">sair</button>
-        </form>
-      </div>
-    </header>
-
-    <main class="bridge-conteudo">
-      {% if messages %}
-        <ul class="msgs">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
-      {% endif %}
-      {% block conteudo %}{% endblock %}
-    </main>
-
   </div>
-</div>
+
+  {% endwith %}
 
 {% else %}
-<main class="login-wrap">{% block conteudo_publico %}{% endblock %}</main>
+
+  <main class="login-wrap">
+    {% block conteudo_publico %}{% endblock %}
+  </main>
+
 {% endif %}
+
 </body>
 </html>
