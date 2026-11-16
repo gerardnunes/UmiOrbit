@@ -2258,7 +2258,7 @@ class AnalisarAreaView(LoginRequiredMixin, View):
             info = analisar_area(area)
         except Exception as exc:
             return JsonResponse({"ok": False, "erro": str(exc)}, status=400)
-        return JsonResponse({"ok": True, "info": info})}
+        return JsonResponse({"ok": True, "info": info})
 
 
 from django.db.models import ProtectedError
