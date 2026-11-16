@@ -33,8 +33,8 @@ from .models import (
     ChecklistItem, ChecklistItemEvento, ChecklistItemFoto, Demanda,
     Incidente, IncidenteAnexo, IncidenteEvento, IncidenteSeveridade,
     IncidenteStatus, IncidenteTipo, LeituraGuincho, LeituraPosicao,
-    LeituraPropulsor, Missao, MissionPlan, OrigemGPS, Perfil, Prioridade,
-    RadarDetectado, Route, Sistema, Status, StatusMissao, Tipo, Waypoint,
+    LeituraPropulsor, Missao, MissionPlan, Perfil, Prioridade,
+    Route, Sistema, Status, StatusMissao, Tipo, Waypoint,
 )
 from .permissions import TrabalhadorRequiredMixin
 from .services import ler_excel, aplicar_import
@@ -1743,7 +1743,7 @@ from django.utils import timezone
 
 from .models import (
     LeituraGuincho, LeituraPosicao, LeituraPropulsor, 
-    OrigemGPS, RadarDetectado, StatusBateria, StatusLuz,
+    StatusBateria, StatusLuz,
 )
 
 # Dicionário para traduzir os nomes das luzes que vêm em chinês
