@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db.models import Q
+
 from .models import (
     Checklist,
     ChecklistImportacao,
@@ -12,15 +14,13 @@ from .models import (
     IncidenteStatus,
     IncidenteTipo,
     Missao,
-    MissionPlan,      # <-- adicionar
+    MissionPlan,
     Perfil,
     Prioridade,
-    Route,            # <-- adicionar
     Sistema,
     Status,
     StatusMissao,
     Tipo,
-    Waypoint,         # <-- adicionar
 )
 
 
@@ -152,7 +152,7 @@ class AtualizacaoForm(forms.Form):
     def clean(self):
         dados = super().clean()
         if not dados.get("status") and not (dados.get("texto") or "").strip():
-            raise forms.ValidationError(
+            raise ValidationError(
                 "Escreva um comentário ou escolha um novo status."
             )
         return dados
@@ -202,7 +202,6 @@ class FiltroDemandaForm(forms.Form):
             lambda u: u.get_full_name() or u.username
         )
 
-        # Sistema: se user foi passado, filtra; senão, todos os ativos
         if self.user is not None:
             self.fields["sistema"].queryset = _sistemas_do_usuario(self.user)
         else:
@@ -316,7 +315,6 @@ class ChecklistForm(forms.ModelForm):
                 ],
             ).order_by("-criado_em")
 
-        # Mantém a missão atual no qs se estiver editando
         if self.instance and self.instance.pk and self.instance.missao_id:
             qs_missao = Missao.objects.filter(
                 Q(pk=self.instance.missao_id) | Q(pk__in=qs_missao.values("pk"))
@@ -351,9 +349,9 @@ class ChecklistImportForm(forms.Form):
     def clean_arquivo(self):
         f = self.cleaned_data["arquivo"]
         if not f.name.lower().endswith((".xlsx", ".xlsm")):
-            raise forms.ValidationError("Envie um arquivo .xlsx (Excel 2007+).")
+            raise ValidationError("Envie um arquivo .xlsx (Excel 2007+).")
         if f.size > 10 * 1024 * 1024:
-            raise forms.ValidationError("Arquivo muito grande (máx. 10 MB).")
+            raise ValidationError("Arquivo muito grande (máx. 10 MB).")
         return f
 
 
@@ -394,7 +392,6 @@ class IncidenteForm(forms.ModelForm):
 
         self.fields["ocorrido_em"].input_formats = ["%Y-%m-%dT%H:%M"]
 
-        # Sistema
         if self.user is not None:
             sistemas_qs = _sistemas_do_usuario(self.user)
             if sistemas_qs.count() == 1:
@@ -404,7 +401,6 @@ class IncidenteForm(forms.ModelForm):
             self.fields["sistema"].queryset = Sistema.objects.filter(ativo=True)
         self.fields["sistema"].required = False
 
-        # Mantém sistema inativo no queryset se estiver editando
         if self.instance and self.instance.pk and self.instance.sistema_id:
             qs_atual = self.fields["sistema"].queryset
             if not qs_atual.filter(pk=self.instance.sistema_id).exists():
@@ -413,7 +409,6 @@ class IncidenteForm(forms.ModelForm):
                     | Q(pk__in=qs_atual.values("pk"))
                 ).order_by("ordem", "nome")
 
-        # Responsável
         self.fields["responsavel"].queryset = _equipe_ativa()
         self.fields["responsavel"].label_from_instance = (
             lambda u: u.get_full_name() or u.username
@@ -476,13 +471,13 @@ class CadastroForm(forms.ModelForm):
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
         if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError("Já existe uma conta com este e-mail.")
+            raise ValidationError("Já existe uma conta com este e-mail.")
         return email
 
     def clean_username(self):
         username = self.cleaned_data["username"].strip()
         if User.objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError("Este usuário já está em uso.")
+            raise ValidationError("Este usuário já está em uso.")
         return username
 
     def clean(self):
@@ -529,56 +524,9 @@ class SelecionarSistemasForm(forms.Form):
         )
 
 
-class ChecklistForm(forms.ModelForm):
-    class Meta:
-        model = Checklist
-        fields = ["titulo", "descricao", "sistema", "missao", "status"]
-        widgets = {
-            "descricao": forms.Textarea(attrs={"rows": 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop("user", None)
-        super().__init__(*args, **kwargs)
-
-        if self.user is not None:
-            sistemas_qs = _sistemas_do_usuario(self.user)
-            self.fields["sistema"].queryset = sistemas_qs
-            if sistemas_qs.count() == 1:
-                self.fields["sistema"].initial = sistemas_qs.first()
-
-            qs_missao = Missao.objects.filter(
-                sistema__in=_sistemas_do_usuario(self.user),
-                status__in=[
-                    StatusMissao.PREPARACAO,
-                    StatusMissao.EM_OPERACAO,
-                    StatusMissao.PAUSADA,
-                ],
-            ).order_by("-criado_em")
-        else:
-            qs_missao = Missao.objects.filter(
-                status__in=[
-                    StatusMissao.PREPARACAO,
-                    StatusMissao.EM_OPERACAO,
-                    StatusMissao.PAUSADA,
-                ],
-            ).order_by("-criado_em")
-
-        # Mantém a missão atual no qs se estiver editando
-        if self.instance and self.instance.pk and self.instance.missao_id:
-            qs_missao = Missao.objects.filter(
-                Q(pk=self.instance.missao_id) | Q(pk__in=qs_missao.values("pk"))
-            ).order_by("-criado_em")
-
-        self.fields["missao"].queryset = qs_missao
-        self.fields["sistema"].required = False
-        self.fields["missao"].required = False
 # =========================================================
 # MISSION PLANNER
 # =========================================================
-from django.core.exceptions import ValidationError as _DjangoValidationError
-
-
 class MissionPlanForm(forms.ModelForm):
     area_geojson = forms.JSONField(
         widget=forms.HiddenInput(attrs={"id": "id_area_geojson"}),
@@ -615,37 +563,48 @@ class MissionPlanForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
-        # Reusa o helper que já existe neste arquivo
+        # ----- Sistema -----
         if self.user is not None:
             sistemas_qs = _sistemas_do_usuario(self.user)
             self.fields["sistema"].queryset = sistemas_qs
             if sistemas_qs.count() == 1:
                 self.fields["sistema"].initial = sistemas_qs.first()
-
         self.fields["sistema"].required = True
 
-        self.fields["missao"].queryset = (
-            Missao.objects.select_related("sistema").order_by("-criado_em")[:50]
-        )
+        # ----- Missão: filtrada pelo sistema escolhido -----
+        sistema_id = None
+        if self.is_bound:
+            sistema_id = self.data.get("sistema") or None
+        elif self.instance and self.instance.pk:
+            sistema_id = self.instance.sistema_id
+
+        qs_missao = Missao.objects.select_related("sistema").order_by("-criado_em")
+        if sistema_id:
+            qs_missao = qs_missao.filter(sistema_id=sistema_id)
+
+        # Mantém a missão atual no queryset ao editar
+        if self.instance and self.instance.pk and self.instance.missao_id:
+            qs_missao = Missao.objects.filter(
+                Q(pk=self.instance.missao_id) | Q(pk__in=qs_missao.values("pk"))
+            ).select_related("sistema").order_by("-criado_em")
+
+        self.fields["missao"].queryset = qs_missao
         self.fields["missao"].required = False
         self.fields["missao"].empty_label = "— Sem missão vinculada —"
 
     def clean_area_geojson(self):
         geo = self.cleaned_data.get("area_geojson")
         if not geo:
-            raise _DjangoValidationError("Desenhe a área de operação no mapa.")
+            raise ValidationError("Desenhe a área de operação no mapa.")
         if isinstance(geo, dict) and geo.get("type") == "Feature":
             geo = geo.get("geometry") or {}
         if not isinstance(geo, dict) or geo.get("type") not in ("Polygon", "MultiPolygon"):
-            raise _DjangoValidationError("A área precisa ser um polígono.")
+            raise ValidationError("A área precisa ser um polígono.")
         if not geo.get("coordinates"):
-            raise _DjangoValidationError("Geometria vazia.")
+            raise ValidationError("Geometria vazia.")
         return geo
 
     def clean(self):
-        cleaned = super().clean()
-        sistema = cleaned.get("sistema")
-        missao = cleaned.get("missao")
-        if missao and sistema and missao.sistema_id != sistema.pk:
-            self.add_error("missao", "A missão selecionada não pertence a este sistema.")
-        return cleaned
+        # A validação de "missão de outro sistema" foi removida:
+        # o queryset já filtra pelo sistema selecionado.
+        return super().clean()

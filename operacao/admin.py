@@ -537,3 +537,29 @@ class IncidenteAnexoAdmin(admin.ModelAdmin):
     date_hierarchy = "enviado_em"
     ordering = ("-enviado_em",)
     raw_id_fields = ("incidente", "enviado_por")
+
+from .models import MissionPlan, Route, Waypoint
+
+
+class WaypointInline(admin.TabularInline):
+    model = Waypoint
+    extra = 0
+    fields = ("ordem", "tipo", "lat", "lon")
+    ordering = ("ordem",)
+
+
+@admin.register(Route)
+class RouteAdmin(admin.ModelAdmin):
+    list_display = ("id", "plano", "nome", "status", "distancia_total_m", "tempo_estimado_min")
+    list_filter = ("status",)
+    search_fields = ("nome", "plano__nome")
+    autocomplete_fields = ("plano",)
+    inlines = [WaypointInline]
+
+
+@admin.register(MissionPlan)
+class MissionPlanAdmin(admin.ModelAdmin):
+    list_display = ("id", "nome", "sistema", "missao", "status")
+    list_filter = ("status", "sistema")
+    search_fields = ("nome",)
+    autocomplete_fields = ("sistema", "missao")
