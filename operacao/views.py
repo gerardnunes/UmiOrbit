@@ -2258,4 +2258,40 @@ class AnalisarAreaView(LoginRequiredMixin, View):
             info = analisar_area(area)
         except Exception as exc:
             return JsonResponse({"ok": False, "erro": str(exc)}, status=400)
-        return JsonResponse({"ok": True, "info": info})
+        return JsonResponse({"ok": True, "info": info})}
+
+
+from django.db.models import ProtectedError
+
+
+class MissionPlanDeleteView(LoginRequiredMixin, View):
+    """
+    POST /planner/<pk>/apagar/
+    Apaga o plano e tudo que está ligado (rotas, waypoints, segmentos).
+    Retorna JSON com {ok: True, url_redirect: ...} ou {ok: False, erro: ...}.
+    """
+    def post(self, request, pk):
+        plano = get_object_or_404(_planos_do_usuario(request.user), pk=pk)
+        nome = plano.nome
+
+        try:
+            # Apaga rotas e dependências em ordem
+            for rota in plano.rotas.all():
+                rota.waypoints.all().delete()
+                rota.segmentos.all().delete()
+                rota.delete()
+            plano.delete()
+        except ProtectedError as exc:
+            return JsonResponse({
+                "ok": False,
+                "erro": "Há outros objetos vinculados a este plano. "
+                        "Apague-os primeiro: " + str(exc),
+            }, status=400)
+        except Exception as exc:
+            return JsonResponse({"ok": False, "erro": str(exc)}, status=400)
+
+        messages.success(request, f'Plano "{nome}" apagado.')
+        return JsonResponse({
+            "ok": True,
+            "url_redirect": reverse("mission_plan_list"),
+        })

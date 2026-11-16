@@ -811,20 +811,18 @@ class LeituraGuincho(models.Model):
     tipo = models.CharField(max_length=10, choices=Tipo.choices)
     criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    # Tração (porta 7)
     max_rope_len = models.FloatField(null=True, blank=True)
     remain_min_rope_len = models.FloatField(null=True, blank=True)
     sensor_once_rope_len = models.FloatField(null=True, blank=True)
     winch_acc_speed_ratio = models.FloatField(null=True, blank=True)
     winch_turn_rate_value = models.FloatField(null=True, blank=True)
 
-    # SVP (porta 8)
-    current_temp = models.FloatField(null=True, blank=True)      # °C
-    current_vol = models.FloatField(null=True, blank=True)       # V
-    current_ele = models.FloatField(null=True, blank=True)       # A
-    current_pull = models.FloatField(null=True, blank=True)      # força
-    rope_speed = models.FloatField(null=True, blank=True)        # m/s
-    pull_rope_len = models.FloatField(null=True, blank=True)     # m
+    current_temp = models.FloatField(null=True, blank=True)
+    current_vol = models.FloatField(null=True, blank=True)
+    current_ele = models.FloatField(null=True, blank=True)
+    current_pull = models.FloatField(null=True, blank=True)
+    rope_speed = models.FloatField(null=True, blank=True)
+    pull_rope_len = models.FloatField(null=True, blank=True)
     winch_rate = models.FloatField(null=True, blank=True)
     current_work_status = models.IntegerField(null=True, blank=True)
     warn = models.CharField(max_length=200, blank=True)
@@ -876,7 +874,6 @@ class LeituraPropulsor(models.Model):
     modo = models.FloatField(null=True, blank=True, help_text="valor do modo/prop (float)")
     timestamp_msg = models.FloatField(help_text="timestamp da mensagem (epoch)")
 
-    # timestamps individuais dos atuadores
     ts_atuador_1 = models.BigIntegerField(null=True, blank=True)
     ts_atuador_2 = models.BigIntegerField(null=True, blank=True)
     ts_atuador_3 = models.BigIntegerField(null=True, blank=True)
@@ -891,67 +888,25 @@ class LeituraPropulsor(models.Model):
     def __str__(self):
         return f"steer={self.steer} · {self.criado_em:%H:%M:%S}"
 
-class OrigemGPS(models.Model):
-    """Última posição GPS conhecida do barco (atualizada automaticamente)."""
-    sistema = models.OneToOneField(
-        Sistema, on_delete=models.CASCADE, related_name="origem_gps"
-    )
-    lat = models.FloatField()
-    lon = models.FloatField()
-    atualizado_em = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        verbose_name = "origem GPS"
-        verbose_name_plural = "origens GPS"
-
-    def __str__(self):
-        return f"{self.sistema.nome}: ({self.lat:.5f}, {self.lon:.5f})"
-
-class RadarDetectado(models.Model):
-    """Posição de um radar/obstáculo detectado."""
-    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="radares")
+class StatusBateria(models.Model):
+    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="baterias")
     criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
-    
-    nome = models.CharField(max_length=50)
-    x = models.FloatField(help_text="metros (X local)")
-    y = models.FloatField(help_text="metros (Y local)")
-    distancia = models.FloatField(help_text="metros")
-    azimute = models.FloatField(help_text="graus")
-    timestamp = models.FloatField()
-    qualidade = models.FloatField(default=0.0)
-
-    class Meta:
-        ordering = ["-criado_em"]
-        verbose_name = "radar detectado"
-        verbose_name_plural = "radares detectados"
-
-class OrigemGPS(models.Model):
-    """Última posição GPS conhecida do barco."""
-    sistema = models.OneToOneField(
-        Sistema, on_delete=models.CASCADE, related_name="origem_gps"
-    )
-    lat = models.FloatField()
-    lon = models.FloatField()
-    atualizado_em = models.DateTimeField(auto_now=True)
+    temperatura = models.FloatField(null=True, blank=True)
+    celulas = models.IntegerField(null=True, blank=True)
+    contador = models.FloatField(null=True, blank=True)
 
 
-class RadarDetectado(models.Model):
-    """Posição de um radar/obstáculo detectado."""
-    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="radares")
+class StatusLuz(models.Model):
+    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="luzes")
     criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
-    
-    nome = models.CharField(max_length=50)
-    x = models.FloatField(help_text="metros (X local)")
-    y = models.FloatField(help_text="metros (Y local)")
-    distancia = models.FloatField(help_text="metros")
-    azimute = models.FloatField(help_text="graus")
-    timestamp = models.FloatField()
-    qualidade = models.FloatField(default=0.0)
-from django.conf import settings
-from django.db import models
-from django.urls import reverse
+    nome = models.CharField(max_length=100)
+    status = models.IntegerField(help_text="0 = OFF, >0 = ON")
 
 
+# =========================================================
+# MISSION PLANNER
+# =========================================================
 class MissionPlan(models.Model):
     """Plano detalhado de uma missão: área, parâmetros e rota."""
 
@@ -1034,6 +989,7 @@ class MissionPlan(models.Model):
 
     def get_absolute_url(self):
         return reverse("mission_plan_detail", args=[self.pk])
+
 
 class Route(models.Model):
     class Status(models.TextChoices):
@@ -1119,17 +1075,3 @@ class RouteSegment(models.Model):
 
     def __str__(self):
         return f"Segmento {self.ordem} · {self.distancia_m:.0f} m"
-
-
-class StatusBateria(models.Model):
-    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="baterias")
-    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
-    temperatura = models.FloatField(null=True, blank=True)
-    celulas = models.IntegerField(null=True, blank=True)
-    contador = models.FloatField(null=True, blank=True)
-
-class StatusLuz(models.Model):
-    sistema = models.ForeignKey(Sistema, on_delete=models.CASCADE, related_name="luzes")
-    criado_em = models.DateTimeField(auto_now_add=True, db_index=True)
-    nome = models.CharField(max_length=100)
-    status = models.IntegerField(help_text="0 = OFF, >0 = ON")

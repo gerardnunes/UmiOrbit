@@ -66,6 +66,7 @@ urlpatterns = [
     path("planner/ambiente/ponto/", views.CondicoesPontoView.as_view(), name="condicoes_ponto"),
     path("planner/analisar-area/", views.AnalisarAreaView.as_view(), name="analisar_area"),
     path("api/telemetria/ingest/", views.ingest_telemetria, name="ingest_telemetria"),
+    path("planner/<int:pk>/apagar/", views.MissionPlanDeleteView.as_view(), name="mission_plan_delete"),
 ]
 
 path(

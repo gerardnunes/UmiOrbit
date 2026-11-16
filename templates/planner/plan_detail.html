@@ -28,6 +28,7 @@
   <div class="pagina-cabecalho-dir">
     <a href="{% url 'mission_plan_update' plano.pk %}" class="btn btn-secundario">Editar</a>
     <button type="button" id="btn-gerar-rota" class="btn">Gerar rota</button>
+    <button type="button" id="btn-apagar-plano" class="btn btn-perigo">Apagar</button>
   </div>
 </div>
 
@@ -150,6 +151,14 @@
 .status-pill.status-completed           { color: #7f9dbf; }
 .status-pill.status-aborted             { color: #c47a7a; border-color: rgba(196,122,122,.3); }
 
+.btn-perigo {
+  color: #c47a7a;
+  border: 1px solid rgba(196,122,122,.3);
+}
+.btn-perigo:hover {
+  background: rgba(196,122,122,.08);
+}
+
 .ambiente-loading { color: #94a3b8; font-size: .85rem; padding: 8px 0; }
 .ambiente-grid {
   display: grid;
@@ -190,12 +199,16 @@
 (function () {
   "use strict";
 
-  // ---------- LÊ DADOS DO SERVIDOR (json_script é à prova de locale) ----------
   function lerJSON(id, fallback) {
     var el = document.getElementById(id);
     if (!el) return fallback;
-    try { return JSON.parse(el.textContent); }
+    var v;
+    try { v = JSON.parse(el.textContent); }
     catch (e) { return fallback; }
+    if (typeof v === "string") {
+      try { v = JSON.parse(v); } catch (e) {}
+    }
+    return v;
   }
 
   var planoDistancia = lerJSON("plano-distancia", 0) || 0;
@@ -208,10 +221,15 @@
   if (!areaInicial || typeof areaInicial !== "object" || !areaInicial.type) {
     areaInicial = null;
   }
-  if (rotaInicial && rotaInicial.type === "Feature") {
+  if (rotaInicial && typeof rotaInicial === "object" && rotaInicial.type === "Feature") {
     rotaInicial = rotaInicial.geometry || null;
   }
-  if (rotaInicial && (rotaInicial.type !== "LineString" || !rotaInicial.coordinates || !rotaInicial.coordinates.length)) {
+  if (rotaInicial && (
+        typeof rotaInicial !== "object" ||
+        rotaInicial.type !== "LineString" ||
+        !rotaInicial.coordinates ||
+        !rotaInicial.coordinates.length
+      )) {
     rotaInicial = null;
   }
 
@@ -226,20 +244,20 @@
 
   var urlGerarRota = "{% url 'gerar_rota' plano.pk %}";
   var urlAmbiente  = "{% url 'condicoes_ambientais' plano.pk %}";
+  var urlApagar    = "{% url 'mission_plan_delete' plano.pk %}";
   var csrfToken    = "{{ csrf_token }}";
 
   function $(id) { return document.getElementById(id); }
 
-  // ---------- MAPA ----------
   if (typeof L === "undefined") {
-    var m = $("mapa");
-    if (m) {
-      m.style.background = "#1e293b";
-      m.style.color = "#b85a5a";
-      m.style.padding = "20px";
-      m.style.textAlign = "center";
-      m.style.fontFamily = "monospace";
-      m.textContent = "Leaflet não carregou do CDN. Verifique a conexão e recarregue.";
+    var mapaEl = $("mapa");
+    if (mapaEl) {
+      mapaEl.style.background = "#1e293b";
+      mapaEl.style.color = "#b85a5a";
+      mapaEl.style.padding = "20px";
+      mapaEl.style.textAlign = "center";
+      mapaEl.style.fontFamily = "monospace";
+      mapaEl.textContent = "Leaflet não carregou do CDN. Verifique a conexão e recarregue.";
     }
     $("mapa-status").textContent = "leaflet não carregou";
     return;
@@ -322,7 +340,6 @@
     return rotaLayer;
   }
 
-  // ---------- FORMATADORES ----------
   function formatarDistancia(m) {
     if (m == null) return "—";
     return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
@@ -345,7 +362,6 @@
     $("kpi-waypoints").textContent = (d.n_waypoints != null) ? d.n_waypoints : "—";
   }
 
-  // ---------- RENDER INICIAL ----------
   desenharArea(areaInicial);
 
   if (rotaInicial) {
@@ -362,16 +378,18 @@
     }
   } else if (areaInicial) {
     $("mapa-status").textContent = "sem rota gerada";
-    // centraliza na área mesmo sem rota
     try {
-      var tmp = L.geoJSON(areaInicial.type === "Feature" ? areaInicial : { type: "Feature", geometry: areaInicial, properties: {} });
+      var tmp = L.geoJSON(
+        areaInicial.type === "Feature"
+          ? areaInicial
+          : { type: "Feature", geometry: areaInicial, properties: {} }
+      );
       mapa.fitBounds(tmp.getBounds().pad(0.2));
     } catch (e) {}
   } else {
     $("mapa-status").textContent = "sem área";
   }
 
-  // ---------- BOTÃO GERAR ROTA ----------
   var btn = $("btn-gerar-rota");
   if (btn) {
     btn.addEventListener("click", async function () {
@@ -421,7 +439,52 @@
     });
   }
 
-  // ---------- AMBIENTE ----------
+  // ---------- BOTÃO APAGAR ----------
+  var btnApagar = $("btn-apagar-plano");
+  if (btnApagar) {
+    btnApagar.addEventListener("click", async function () {
+      var confirmar = confirm(
+        "Apagar o plano \"" + {{ plano.nome|escapejs }} + "\"?\n\n" +
+        "Esta ação apaga o plano e TODAS as rotas, waypoints e segmentos vinculados.\n" +
+        "Não dá para desfazer."
+      );
+      if (!confirmar) return;
+
+      btnApagar.disabled = true;
+      var original = btnApagar.textContent;
+      btnApagar.textContent = "Apagando...";
+
+      try {
+        var resp = await fetch(urlApagar, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken,
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json",
+          },
+          credentials: "same-origin",
+        });
+
+        var data = await resp.json().catch(function () { return {}; });
+
+        if (!resp.ok || !data.ok) {
+          btnApagar.disabled = false;
+          btnApagar.textContent = original;
+          alert("Não foi possível apagar: " + (data.erro || ("HTTP " + resp.status)));
+          return;
+        }
+
+        // Redireciona para a lista de planos
+        window.location.href = data.url_redirect || "{% url 'mission_plan_list' %}";
+      } catch (err) {
+        btnApagar.disabled = false;
+        btnApagar.textContent = original;
+        console.error("Apagar plano:", err);
+        alert("Falha de rede ao apagar o plano.");
+      }
+    });
+  }
+
   var corpo    = $("ambiente-corpo");
   var avisoEl  = $("ambiente-aviso");
   var btnAmb   = $("btn-atualizar-ambiente");
@@ -436,7 +499,8 @@
 
   function renderAmbiente(d) {
     if (!d || (!d.ok && d.erro)) {
-      corpo.innerHTML = '<div class="ambiente-loading">Erro: ' + ((d && d.erro) || "desconhecido") + "</div>";
+      corpo.innerHTML = '<div class="ambiente-loading">Erro: ' +
+        ((d && d.erro) || "desconhecido") + "</div>";
       atualEl.textContent = "erro";
       return;
     }
@@ -447,14 +511,16 @@
         valor: fmtNum(d.ondas && d.ondas.altura_m, 2, " m"),
         nivel: (d.ondas && d.ondas.nivel) || "indisponivel",
         cor: (d.ondas && d.ondas.cor) || "cinza",
-        extra: (d.ondas && d.ondas.periodo_s) ? "período " + fmtNum(d.ondas.periodo_s, 1, " s") : "",
+        extra: (d.ondas && d.ondas.periodo_s)
+          ? "período " + fmtNum(d.ondas.periodo_s, 1, " s") : "",
       },
       {
         label: "Vento",
         valor: fmtNum(d.vento && d.vento.velocidade_kmh, 1, " km/h"),
         nivel: (d.vento && d.vento.nivel) || "indisponivel",
         cor: (d.vento && d.vento.cor) || "cinza",
-        extra: (d.vento && d.vento.rajada_kmh) ? "rajada " + fmtNum(d.vento.rajada_kmh, 1, " km/h") : "",
+        extra: (d.vento && d.vento.rajada_kmh)
+          ? "rajada " + fmtNum(d.vento.rajada_kmh, 1, " km/h") : "",
       },
       {
         label: "Corrente",
