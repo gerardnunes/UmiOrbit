@@ -13,6 +13,7 @@
 {{ plano.n_waypoints|default:0|json_script:"plano-waypoints" }}
 {{ area_geojson_inicial|json_script:"area-inicial" }}
 {{ rota_geojson_inicial|json_script:"rota-inicial" }}
+{{ plano.nome|json_script:"plano-nome" }}
 
 <div class="pagina-cabecalho">
   <div class="pagina-cabecalho-esq">
@@ -154,9 +155,17 @@
 .btn-perigo {
   color: #c47a7a;
   border: 1px solid rgba(196,122,122,.3);
+  background: rgba(196,122,122,.04);
+  transition: background .15s, color .15s, border-color .15s;
 }
 .btn-perigo:hover {
-  background: rgba(196,122,122,.08);
+  background: rgba(196,122,122,.12);
+  color: #e09090;
+  border-color: rgba(196,122,122,.5);
+}
+.btn-perigo:disabled {
+  cursor: not-allowed;
+  opacity: .6;
 }
 
 .ambiente-loading { color: #94a3b8; font-size: .85rem; padding: 8px 0; }
@@ -199,6 +208,7 @@
 (function () {
   "use strict";
 
+  // ---------- LEITURA DOS DADOS ----------
   function lerJSON(id, fallback) {
     var el = document.getElementById(id);
     if (!el) return fallback;
@@ -217,6 +227,7 @@
   var planoWaypoints = lerJSON("plano-waypoints", 0) || 0;
   var areaInicial    = lerJSON("area-inicial", null);
   var rotaInicial    = lerJSON("rota-inicial", null);
+  var nomePlano      = lerJSON("plano-nome", "");
 
   if (!areaInicial || typeof areaInicial !== "object" || !areaInicial.type) {
     areaInicial = null;
@@ -240,15 +251,18 @@
     planoWaypoints: planoWaypoints,
     areaInicial: areaInicial,
     rotaInicial: rotaInicial,
+    nomePlano: nomePlano,
   };
 
   var urlGerarRota = "{% url 'gerar_rota' plano.pk %}";
   var urlAmbiente  = "{% url 'condicoes_ambientais' plano.pk %}";
   var urlApagar    = "{% url 'mission_plan_delete' plano.pk %}";
+  var urlLista     = "{% url 'mission_plan_list' %}";
   var csrfToken    = "{{ csrf_token }}";
 
   function $(id) { return document.getElementById(id); }
 
+  // ---------- MAPA ----------
   if (typeof L === "undefined") {
     var mapaEl = $("mapa");
     if (mapaEl) {
@@ -340,6 +354,7 @@
     return rotaLayer;
   }
 
+  // ---------- FORMATADORES ----------
   function formatarDistancia(m) {
     if (m == null) return "—";
     return m >= 1000 ? (m / 1000).toFixed(2) + " km" : Math.round(m) + " m";
@@ -362,6 +377,7 @@
     $("kpi-waypoints").textContent = (d.n_waypoints != null) ? d.n_waypoints : "—";
   }
 
+  // ---------- RENDER INICIAL ----------
   desenharArea(areaInicial);
 
   if (rotaInicial) {
@@ -390,6 +406,7 @@
     $("mapa-status").textContent = "sem área";
   }
 
+  // ---------- BOTÃO GERAR ROTA ----------
   var btn = $("btn-gerar-rota");
   if (btn) {
     btn.addEventListener("click", async function () {
@@ -444,7 +461,7 @@
   if (btnApagar) {
     btnApagar.addEventListener("click", async function () {
       var confirmar = confirm(
-        "Apagar o plano \"" + {{ plano.nome|escapejs }} + "\"?\n\n" +
+        'Apagar o plano "' + (nomePlano || "(sem nome)") + '"?\n\n' +
         "Esta ação apaga o plano e TODAS as rotas, waypoints e segmentos vinculados.\n" +
         "Não dá para desfazer."
       );
@@ -474,8 +491,7 @@
           return;
         }
 
-        // Redireciona para a lista de planos
-        window.location.href = data.url_redirect || "{% url 'mission_plan_list' %}";
+        window.location.href = data.url_redirect || urlLista;
       } catch (err) {
         btnApagar.disabled = false;
         btnApagar.textContent = original;
@@ -485,6 +501,7 @@
     });
   }
 
+  // ---------- AMBIENTE ----------
   var corpo    = $("ambiente-corpo");
   var avisoEl  = $("ambiente-aviso");
   var btnAmb   = $("btn-atualizar-ambiente");
