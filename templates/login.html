@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>UMI ORBIT · Plataforma operacional do L42</title>
+<style>
+:root{color-scheme:dark;--az1:#1e40af;--az2:#0ea5e9;--az3:#7dd3fc;--ok:#22c55e;--warn:#f59e0b;--err:#ef4444;--bg:#070d1a;--painel:#0d1526;--linha:rgba(255,255,255,.1);--txt:#e6edf3;--suave:#93a4c0;--ease:cubic-bezier(.2,.7,.2,1);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+.prog{position:fixed;top:env(safe-area-inset-top,0px);left:0;height:3px;width:100%;background:linear-gradient(90deg,var(--az1),var(--az2),var(--az3));transform-origin:0 50%;transform:scaleX(0);z-index:99}
+.nav{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:16px;padding:8px 8px 8px 16px;border-radius:99px;background:rgba(13,21,38,.72);backdrop-filter:blur(14px);border:1px solid var(--linha);z-index:90;font-size:.8rem;transition:.3s}
+.nav.off{opacity:0;transform:translate(-50%,-14px);pointer-events:none}
+.nav strong{letter-spacing:.14em;font-size:.76rem}
+.nav a{color:var(--suave);text-decoration:none}
+.nav .cta,.btn{padding:9px 16px;border-radius:99px;background:linear-gradient(135deg,var(--az1),var(--az2));color:#fff;font-weight:600;text-decoration:none}
+.hero{position:relative;min-height:100svh;display:grid;place-items:center;text-align:center;padding:110px 22px 80px;overflow:hidden}
+#mar{position:absolute;inset:0;width:100%;height:100%}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(60% 45% at 50% 28%,rgba(7,13,26,.75),transparent 75%);pointer-events:none}
+.hc{position:relative;z-index:2;max-width:880px}
+.eye{display:inline-flex;gap:8px;align-items:center;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--az3);margin-bottom:18px}
+.eye i{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pl 2s infinite}
+@keyframes pl{70%{box-shadow:0 0 0 10px transparent}0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}}
+h1{font-size:clamp(2.4rem,7vw,5rem);line-height:1.03;letter-spacing:-.035em;margin:0 0 20px;font-weight:800}
+h1 b,h2 b{background:linear-gradient(90deg,#7dd3fc,#38bdf8 45%,#a5b4fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hc p{color:var(--suave);font-size:clamp(1rem,1.5vw,1.2rem);line-height:1.65;max-width:56ch;margin:0 auto 30px}
+.btn{display:inline-block;padding:14px 26px;border-radius:12px;border:0;box-shadow:0 12px 32px -12px rgba(14,165,233,.8);transition:transform .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn.g{background:rgba(255,255,255,.05);border:1px solid var(--linha);box-shadow:none;margin-left:8px}
+.rola{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:2;color:var(--suave);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;animation:fl 2.4s ease-in-out infinite}
+@keyframes fl{50%{transform:translate(-50%,-8px)}}
+/* palco 3D */
+.palco{height:560vh;position:relative}
+.stage{position:sticky;top:0;height:100svh;display:flex;flex-direction:column;justify-content:space-between;padding:84px 20px 22px;overflow:hidden;background:radial-gradient(50% 50% at 50% 45%,rgba(14,165,233,.14),transparent 70%)}
+.stage h2{text-align:center;margin:0;font-size:clamp(1.3rem,2.6vw,2rem);letter-spacing:-.02em}
+.cena3d{position:relative;flex:1;perspective:1500px;min-height:260px;--r:300px}
+.anel{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transition:transform .10s var(--ease)}
+.cartao{position:absolute;width:250px;height:290px;left:-125px;top:-145px;padding:18px;border-radius:18px;background:linear-gradient(160deg,rgba(21,33,60,.95),rgba(11,18,32,.95));border:1px solid var(--linha);backface-visibility:hidden;opacity:.45;transition:opacity .4s,border-color .4s,box-shadow .4s}
+.cartao.on{opacity:1;border-color:rgba(14,165,233,.7);box-shadow:0 0 60px -10px rgba(14,165,233,.55)}
+.cartao small{color:var(--az3);letter-spacing:.2em;font-size:.68rem}
+.cartao h3{margin:4px 0 16px;font-size:1.15rem}
+.lin{display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:.78rem;margin-bottom:11px}
+.lin em{font-style:normal;color:var(--suave);font-size:.7rem}
+.lin b{grid-column:1/3;height:5px;border-radius:5px;background:rgba(255,255,255,.07);overflow:hidden}
+.lin b i{display:block;height:100%;background:linear-gradient(90deg,var(--az1),var(--az2));border-radius:5px}
+.lin b i.v{background:var(--ok)}.lin b i.a{background:var(--warn)}.lin b i.e{background:var(--err)}
+.info{display:grid;gap:10px;text-align:center;max-width:620px;margin:0 auto;min-height:150px}
+.info .in{animation:in .5s var(--ease)}
+@keyframes in{from{opacity:0;transform:translateY(14px)}}
+.info h3{margin:0 0 6px;font-size:1.5rem}
+.info p{margin:0 0 10px;color:var(--suave);line-height:1.6}
+.info ul{list-style:none;margin:0;padding:0;display:flex;gap:6px 16px;flex-wrap:wrap;justify-content:center;font-size:.85rem}
+.info li::before{content:"✓ ";color:var(--ok);font-weight:700}
+.pts{display:flex;gap:8px;justify-content:center}
+.pts button{width:34px;height:6px;border-radius:6px;border:0;padding:0;background:rgba(255,255,255,.15);transition:.3s}
+.pts button.on{background:var(--az2);width:54px}
+/* laboratório */
+.lab{max-width:980px;margin:0 auto;padding:140px 20px}
+.cab{text-align:center;margin-bottom:36px}
+.cab h2{font-size:clamp(1.8rem,4vw,3rem);letter-spacing:-.025em;margin:0 0 12px}
+.cab p{color:var(--suave);max-width:54ch;margin:0 auto;line-height:1.65}
+.abas{display:flex;gap:8px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+.abas button{padding:10px 18px;border-radius:99px;background:rgba(255,255,255,.04);border:1px solid var(--linha);transition:.2s}
+.abas button.on{background:linear-gradient(135deg,var(--az1),var(--az2));border-color:transparent}
+.tela{border-radius:20px;border:1px solid var(--linha);background:linear-gradient(180deg,#0f172a,#0b1220);padding:24px;min-height:330px;box-shadow:0 50px 90px -50px #000;transform-style:preserve-3d;transition:transform .2s}
+.pn{display:none}.pn.on{display:block;animation:in .4s var(--ease)}
+.ck{display:grid;grid-template-columns:1fr 150px;gap:24px;align-items:center}
+.it{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:12px 14px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--linha)}
+.it .bx{width:20px;height:20px;border-radius:6px;border:1.5px solid rgba(255,255,255,.25);display:grid;place-items:center;flex:none;transition:.25s}
+.it.ok .bx{background:var(--ok);border-color:var(--ok)}.it.ok .bx::after{content:"✓";font-size:.75rem;font-weight:700;color:#fff}
+.it.ok span:last-child{color:var(--suave);text-decoration:line-through}
+.anelp{text-align:center}
+.anelp svg{width:130px;height:130px;transform:rotate(-90deg)}
+.anelp circle{fill:none;stroke-width:9;stroke-linecap:round}
+.anelp .f{stroke:var(--az2);stroke-dasharray:289;stroke-dashoffset:289;transition:stroke-dashoffset .6s var(--ease)}
+.anelp strong{display:block;font-size:1.5rem;margin:-84px 0 52px}
+.go{margin-top:14px;width:100%;padding:12px;border-radius:12px;border:0;background:linear-gradient(135deg,var(--az1),var(--az2));font-weight:600}
+.go:disabled{opacity:.35;cursor:not-allowed}
+.sev{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.sev button{padding:8px 14px;border-radius:99px;border:1px solid var(--linha);background:rgba(255,255,255,.04)}
+.sev button.on{border-color:currentColor;background:rgba(255,255,255,.1)}
+.sev .go{width:auto;margin:0 0 0 auto;padding:9px 18px}
+.card{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px;margin-bottom:8px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--linha);animation:in .4s var(--ease)}
+.card .d{width:10px;height:10px;border-radius:50%;box-shadow:0 0 12px currentColor;background:currentColor}
+.card small{display:block;color:var(--suave);font-size:.72rem}
+.card .tg{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase}
+.c-a{color:var(--err)}.c-m{color:var(--warn)}.c-b{color:var(--ok)}
+.card.sai{opacity:0;transform:translateX(40px);transition:.4s}
+.ap{display:flex;gap:6px}
+.ap button{width:36px;height:36px;border-radius:10px;border:1px solid var(--linha);background:rgba(255,255,255,.04)}
+.ap button:hover{background:rgba(255,255,255,.12)}
+.cnt{display:inline-block;min-width:24px;padding:2px 8px;border-radius:99px;background:rgba(239,68,68,.18);color:#fca5a5;font-weight:700;font-size:.8rem}
+.vazio{text-align:center;color:var(--ok);padding:60px 0}
+/* arquitetura */
+.arq{padding:140px 20px;background:radial-gradient(60% 50% at 50% 30%,rgba(14,165,233,.1),transparent 70%),#0b1220;border-block:1px solid var(--linha);text-align:center;overflow:hidden}
+.iso{height:380px;display:grid;place-items:center;perspective:1200px;margin-top:20px}
+.pilha{position:relative;width:280px;height:280px;transform-style:preserve-3d;transform:rotateX(60deg) rotateZ(-38deg)}
+.cam{position:absolute;inset:0;border-radius:18px;border:1.5px solid rgba(125,211,252,.55);background:rgba(14,165,233,.14);display:grid;place-items:center;text-align:center;font-size:.85rem;font-weight:600;transform:translateZ(calc(var(--i)*14px));transition:transform 1s var(--ease),background .3s;cursor:pointer;box-shadow:0 0 40px -10px rgba(14,165,233,.5)}
+.cam small{display:block;color:var(--az3);font-weight:400;font-size:.7rem;transform:rotateZ(38deg) rotateX(-0deg)}
+.cam span{transform:rotateZ(38deg)}
+.pilha.open .cam{transform:translateZ(calc(var(--i)*74px))}
+.cam:hover{background:rgba(14,165,233,.4)}
+.leg{margin-top:16px;color:var(--suave);min-height:24px;font-size:.92rem}
+.fim{padding:160px 20px;text-align:center;background:radial-gradient(50% 60% at 50% 50%,rgba(14,165,233,.2),transparent 70%)}
+.fim h2{font-size:clamp(2rem,5vw,3.6rem);letter-spacing:-.03em;margin:0 0 16px;line-height:1.08}
+.fim p{color:var(--suave);margin:0 0 32px}
+footer{padding:26px 20px;border-top:1px solid var(--linha);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:.78rem;color:var(--suave);max-width:1180px;margin:0 auto}
+.rv{opacity:0;transform:translateY(40px) rotateX(10deg);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.rv.v{opacity:1;transform:none}
+.toast{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translate(-50%,40px);opacity:0;padding:12px 20px;border-radius:12px;background:var(--ok);color:#04230f;font-weight:700;z-index:100;transition:.4s var(--ease)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media(max-width:760px){.nav a:not(.cta){display:none}.cena3d{--r:235px}.cartao{width:200px;height:260px;left:-100px;top:-130px;padding:14px}.ck{grid-template-columns:1fr}.palco{height:480vh}.pilha{width:210px;height:210px}.btn.g{margin:10px 0 0}.sev .go{margin:0}}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+<nav class="nav" id="nav">
+  <strong>UMI ORBIT</strong>
+  <a href="#palco">Operações</a>
+  <a href="#lab">Experimente</a>
+  <a href="#arq">Arquitetura</a>
+  <a class="cta" href="{% url 'LDV' %}">Acessar →</a>
+</nav><header class="hero">
+  <canvas id="mar" aria-hidden="true"></canvas>
+  <div class="hc">
+    <span class="eye"><i></i>Plataforma operacional · USV Polaris L42</span>
+    <h1>Toda a operação do <b>L42</b><br>em um único console.</h1>
+    <p>Do planejamento da missão à aprovação da diretoria. Missões, manutenção, incidentes e checklists rastreáveis: cada ação registrada, cada recurso auditável.</p>
+    <a class="btn" href="#palco">Ver a plataforma ↓</a><a class="btn g" href="#lab">Experimentar</a>
+  </div>
+  <span class="rola">role</span>
+</header>
+
+<section class="palco" id="palco">
+  <div class="stage">
+    <h2>Seis operações. <b>Um só fluxo.</b></h2>
+    <div class="cena3d" id="cena"><div class="anel" id="anel"></div></div>
+    <div class="info" id="info"></div>
+    <div class="pts" id="pts"></div>
+  </div>
+</section>
+
+<section class="lab" id="lab">
+  <div class="cab rv"><h2>Não precisa acreditar. <b>Experimente.</b></h2><p>Esta é uma demonstração: mexa nos módulos e veja como a rotina do L42 flui dentro do sistema.</p></div>
+  <div class="abas rv" id="abas"><button class="on" data-t="0">Checklist</button><button data-t="1">Incidentes</button><button data-t="2">Aprovações</button></div>
+  <div class="tela rv" id="tela">
+    <div class="pn on">
+      <div class="ck">
+        <div id="itens"></div>
+        <div class="anelp"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" stroke="rgba(255,255,255,.08)"/><circle class="f" id="aro" cx="50" cy="50" r="46"/></svg><strong id="pct">0%</strong><button class="go" id="ini" disabled>Iniciar missão</button></div>
+      </div>
+    </div>
+    <div class="pn">
+      <div class="sev" id="sev"><span style="color:var(--suave)">Severidade:</span><button class="c-a" data-s="a">Alta</button><button class="c-m on" data-s="m">Média</button><button class="c-b" data-s="b">Baixa</button><button class="go" id="reg">+ Registrar incidente</button></div>
+      <div id="incs"></div>
+    </div>
+    <div class="pn">
+      <p style="margin:0 0 16px;color:var(--suave)">Pendências para a diretoria: <span class="cnt" id="np">3</span></p>
+      <div id="aps"></div>
+    </div>
+  </div>
+</section>
+
+<section class="arq" id="arq">
+  <div class="rv"><h2 style="font-size:clamp(1.8rem,4vw,2.8rem);letter-spacing:-.02em;margin:0 0 12px">Por dentro: <b>camadas</b> bem definidas.</h2>
+  <p style="color:var(--suave);max-width:56ch;margin:0 auto;line-height:1.65">Interface Django, dados em PostgreSQL, autenticação nativa e permissões por perfil. Toque na pilha para abrir as camadas.</p></div>
+  <div class="iso rv"><div class="pilha" id="pilha">
+    <div class="cam" style="--i:0" data-d="PostgreSQL guarda missões, incidentes, ordens e logs."><span>Banco de dados<small>PostgreSQL</small></span></div>
+    <div class="cam" style="--i:1" data-d="Django Auth, sessões e perfis: diretoria e equipe."><span>Autenticação e permissões<small>Django Auth</small></span></div>
+    <div class="cam" style="--i:2" data-d="Views e ORM aplicam as regras de negócio e o registro."><span>Backend<small>Django · Views · ORM</small></span></div>
+    <div class="cam" style="--i:3" data-d="Templates e CSS entregam o console ao operador."><span>Interface<small>Django Templates</small></span></div>
+  </div></div>
+  <div class="leg" id="leg">Passe o dedo ou o mouse sobre uma camada.</div>
+</section>
+
+<section class="fim" id="fim">
+  <div class="rv"><h2>Pronto para operar<br>com <b>visão total</b>?</h2><p>Acesse o console do L42 e comece pelo painel de visão geral.</p>
+  <a class="btn" href="#">Acessar o sistema →</a><a class="btn g" href="#">Criar conta</a></div>
+</section>
+<footer><span><strong>UMI ORBIT</strong> · by UMI SAN · v2.4</span><span>USV Polaris L42 · Açu · RJ</span></footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)},$$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var reduz=matchMedia('(prefers-reduced-motion:reduce)').matches;
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(function(){t.classList.remove('on')},2400)}
+
+/* oceano 3D em canvas */
+var cv=$('#mar'),cx=cv.getContext('2d'),W=0,H=0,mx=0,t=0,vis=true;
+function size(){var d=Math.min(devicePixelRatio||1,2);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0)}
+function mar(){
+  if(vis){t+=.012;cx.clearRect(0,0,W,H);
+  var C=46,R=30,yw=mx*.4,sy=Math.sin(yw),cy=Math.cos(yw),ct=.94,st=.34,fov=Math.min(Math.max(W,600),1000),P=[],i,j;
+  var amp=.55+Math.min(scrollY/H,1)*.5;
+  for(j=0;j<R;j++){P[j]=[];for(i=0;i<C;i++){
+    var x=(i-C/2)*.55,z=(j-R/2)*.55,y=amp*(Math.sin(x*1.1+t*2)+Math.cos(z*.9+t*1.6)+Math.sin((x+z)*.6+t))*.4;
+    var x2=x*cy-z*sy,z2=x*sy+z*cy,y3=y*ct+z2*st,z3=z2*ct-y*st,s=fov/(z3+8.2);
+    P[j][i]=[W/2+x2*s,H*.74-y3*s,z3]}}
+  cx.lineWidth=1;
+  for(j=0;j<R;j++){var a=Math.max(.05,Math.min(.75,.85-(j/R)*.8));cx.strokeStyle='rgba(56,189,248,'+a+')';cx.beginPath();for(i=0;i<C;i++)i?cx.lineTo(P[j][i][0],P[j][i][1]):cx.moveTo(P[j][i][0],P[j][i][1]);cx.stroke()}
+  for(i=0;i<C;i++){cx.strokeStyle='rgba(125,211,252,.22)';cx.beginPath();for(j=0;j<R;j++)j?cx.lineTo(P[j][i][0],P[j][i][1]):cx.moveTo(P[j][i][0],P[j][i][1]);cx.stroke()}}
+  if(!reduz)requestAnimationFrame(mar)
+}
+size();addEventListener('resize',size);
+addEventListener('pointermove',function(e){mx=(e.clientX/innerWidth-.5)*2});
+new IntersectionObserver(function(e){vis=e[0].isIntersecting}).observe(cv);
+mar();
+
+/* progresso + nav */
+var ult=0,nav=$('#nav');
+function scroll(){var h=document.documentElement,m=h.scrollHeight-h.clientHeight,y=h.scrollTop;
+  $('#prog').style.transform='scaleX('+(m>0?y/m:0)+')';
+  nav.classList.toggle('off',y>160&&y>ult);ult=y;anelUp()}
+addEventListener('scroll',scroll,{passive:true});
+
+/* carrossel 3D */
+function lin(l){return '<div class="lin"><span>'+l[0]+'</span><em>'+l[1]+'</em><b><i class="'+(l[3]||'')+'" style="width:'+l[2]+'%"></i></b></div>'}
+var ops=[
+{t:'Missões',d:'Acompanhe da abertura ao encerramento: responsáveis, embarcação, janela de execução e status em tempo real.',li:['Status por etapa','Plano e tripulação','Histórico por embarcação'],v:[['Plano aprovado','concluída',100,'v'],['Pré-operação','100%',100,'v'],['Execução em curso','ativa',60],['Relatório final','pendente',0]]},
+{t:'Planejamento',d:'Estruture cada missão em etapas com responsáveis, janelas de tempo e recursos. O plano vira a espinha dorsal da execução.',li:['Etapas com responsável','Recursos por etapa','Aprovação antes de iniciar'],v:[['06:00 Briefing','Base Açu',100,'v'],['07:30 Trânsito','Ponto ALFA',70],['09:00 Varredura','Área de operação',40],['14:00 Retorno','Desmobilização',10]]},
+{t:'Manutenção',d:'Ordens preventivas e corretivas com progresso visível. Nada é feito sem registro e nada fica sem acompanhamento.',li:['Preventivas e corretivas','Progresso por sistema','Histórico por embarcação'],v:[['Motor principal','100%',100,'v'],['Sistema hidráulico','62%',62,'a'],['Eletrônica de bordo','40%',40],['Hélice / propulsão','15%',15,'e']]},
+{t:'Incidentes',d:'Registre, classifique e acompanhe cada ocorrência. Severidade, status e responsável: sem planilha paralela.',li:['Classificação por severidade','Responsável atribuído','Fechamento com evidências'],v:[['Falha no sensor de proa','alta',90,'e'],['Ruído no eixo','média',55,'a'],['Lanterna de sinalização','baixa',20,'v'],['Resolvidos hoje','3',100,'v']]},
+{t:'Checklists',d:'Listas de verificação por operação, com itens obrigatórios e registro de quem executou o quê.',li:['Modelos por operação','Itens obrigatórios','Registro por usuário'],v:[['Combustível e níveis','ok',100,'v'],['Sistema elétrico','ok',100,'v'],['Comunicação testada','ok',100,'v'],['Segurança conferida','pendente',0]]},
+{t:'Aprovações',d:'Pendências agregadas em um só lugar, com contagem visível no menu. Sem planilha, sem e-mail perdido.',li:['Fila única','Aprovar ou recusar com registro','Visível só para diretoria'],v:[['Plano de missão #042','3',80],['Ordem de manutenção #118','1',30],['Relatório de incidente','2',55],['Fila total','6',100,'a']]}
+];
+var anel=$('#anel'),info=$('#info'),pts=$('#pts'),palco=$('#palco'),N=ops.length,act=-1,cards=[],bt=[];
+ops.forEach(function(o,i){
+  var c=document.createElement('div');c.className='cartao';c.style.transform='rotateY('+i*60+'deg) translateZ(var(--r))';
+  c.innerHTML='<small>0'+(i+2)+'</small><h3>'+o.t+'</h3>'+o.v.map(lin).join('');anel.appendChild(c);cards.push(c);
+  var b=document.createElement('button');b.setAttribute('aria-label',o.t);b.onclick=function(){var r=palco.getBoundingClientRect();scrollTo({top:scrollY+r.top+i/(N-1)*(r.height-innerHeight)+2})};pts.appendChild(b);bt.push(b)});
+function setInfo(a){var o=ops[a];info.innerHTML='<div class="in"><h3>'+o.t+'</h3><p>'+o.d+'</p><ul>'+o.li.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div>';
+  cards.forEach(function(c,i){c.classList.toggle('on',i===a)});bt.forEach(function(b,i){b.classList.toggle('on',i===a)})}
+var my=0;
+addEventListener('pointermove',function(e){my=(e.clientY/innerHeight-.5)*2;$('#cena').style.setProperty('--ry',my)});
+function anelUp(){var r=palco.getBoundingClientRect(),m=r.height-innerHeight,p=Math.min(1,Math.max(0,-r.top/m)),f=p*(N-1),a=Math.round(f);
+  anel.style.transform='translateZ(calc(var(--r)*-1)) rotateX('+(-my*6-8)+'deg) rotateY('+(-f*60)+'deg)';
+  if(a!==act){act=a;setInfo(a)}}
+scroll();
+
+/* reveal */
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('v');io.unobserve(e.target)}})},{threshold:.12});
+$$('.rv').forEach(function(el){io.observe(el)});
+
+/* laboratório */
+$$('#abas button').forEach(function(b){b.onclick=function(){$$('#abas button').forEach(function(x){x.classList.remove('on')});b.classList.add('on');$$('.pn').forEach(function(p,i){p.classList.toggle('on',i==b.dataset.t)})}});
+var tela=$('#tela');
+tela.addEventListener('pointermove',function(e){var r=tela.getBoundingClientRect();tela.style.transform='perspective(1000px) rotateY('+((e.clientX-r.left)/r.width-.5)*5+'deg) rotateX('+(-((e.clientY-r.top)/r.height-.5)*5)+'deg)'});
+tela.addEventListener('pointerleave',function(){tela.style.transform=''});
+/* checklist */
+var ck=['Combustível e níveis verificados','Sistema elétrico energizado','Comunicação testada','Equipamentos de segurança conferidos','Tripulação embarcada e ciente'];
+ck.forEach(function(s){var b=document.createElement('button');b.className='it';b.innerHTML='<span class="bx"></span><span>'+s+'</span>';b.onclick=function(){b.classList.toggle('ok');up()};$('#itens').appendChild(b)});
+function up(){var n=$$('.it.ok').length,p=Math.round(n/ck.length*100);$('#pct').textContent=p+'%';$('#aro').style.strokeDashoffset=289*(1-p/100);$('#ini').disabled=n<ck.length}
+$('#ini').onclick=function(){toast('Missão #042 ativa · checklist 100%');this.textContent='Missão em execução ✓';this.disabled=true};
+/* incidentes */
+var sv='m',nm={a:'alta',m:'média',b:'baixa'},tit=['Vazamento no tanque','Leitura anômala do GPS','Falha na bomba de porão','Ruído no eixo','Alarme de bateria'],k=0;
+$$('#sev [data-s]').forEach(function(b){b.onclick=function(){sv=b.dataset.s;$$('#sev [data-s]').forEach(function(x){x.classList.toggle('on',x===b)})}});
+function inc(s,t,w){var d=document.createElement('div');d.className='card';d.innerHTML='<span class="d c-'+s+'"></span><div><strong>'+t+'</strong><small>'+w+'</small></div><span class="tg c-'+s+'">'+nm[s]+'</span>';$('#incs').insertBefore(d,$('#incs').firstChild);while($('#incs').children.length>4)$('#incs').lastChild.remove()}
+inc('b','Lanterna de sinalização','Resolvido há 1h');inc('m','Ruído no eixo de transmissão','Reportado há 5h');
+$('#reg').onclick=function(){inc(sv,tit[k++%tit.length],'Reportado agora · atribuído à equipe');toast('Incidente registrado com severidade '+nm[sv])};
+/* aprovações */
+var ap=[['MC','Plano de missão #042','M. Costa'],['RS','Ordem de manutenção #118','R. Silva'],['AL','Relatório de incidente','A. Lima']],left=3;
+ap.forEach(function(a){var d=document.createElement('div');d.className='card';d.style.gridTemplateColumns='auto 1fr auto';
+  d.innerHTML='<span class="cnt" style="background:linear-gradient(135deg,var(--az1),var(--az2));color:#fff;border-radius:50%;width:34px;height:34px;display:grid;place-items:center;padding:0">'+a[0]+'</span><div><strong>'+a[1]+'</strong><small>Enviado por '+a[2]+'</small></div><div class="ap"><button title="Aprovar">✓</button><button title="Recusar">✕</button></div>';
+  d.querySelectorAll('button').forEach(function(b,i){b.onclick=function(){d.classList.add('sai');left--;$('#np').textContent=left;toast(i?'Recusado e registrado':'Aprovado e registrado');setTimeout(function(){d.remove();if(!left)$('#aps').innerHTML='<div class="vazio">✓ Fila zerada. Nada pendente.</div>'},400)}});
+  $('#aps').appendChild(d)});
+
+/* arquitetura */
+var pl=$('#pilha');
+new IntersectionObserver(function(e){if(e[0].isIntersecting)setTimeout(function(){pl.classList.add('open')},350)},{threshold:.5}).observe(pl);
+$$('.cam').forEach(function(c){c.onpointerenter=c.onclick=function(){$('#leg').textContent=c.dataset.d}});
+pl.onclick=function(e){if(e.target===pl)pl.classList.toggle('open')};
+})();
+</script>
+</body>
+</html>

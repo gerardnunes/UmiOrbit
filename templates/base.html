@@ -18,43 +18,20 @@
          RAIL LATERAL
          ============================================ -->
     <aside class="rail">
+{% load static %}
 
-      <a class="rail-marca" href="{% url 'dashboard' %}" aria-label="UMI Orbit — ir para o painel">
-        <span class="rail-marca-simbolo">
-          <!-- Logo UMI ORBIT (by UMI SAN): boia náutica + órbita + ondas -->
-          <svg width="36" height="36" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Umi Orbit by Umi San">
-            <defs>
-              <linearGradient id="uo-fundo" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#1e40af"/>
-                <stop offset="1" stop-color="#0ea5e9"/>
-              </linearGradient>
-              <clipPath id="uo-recorte"><rect x="1" y="1" width="38" height="38" rx="12"/></clipPath>
-            </defs>
-            <g clip-path="url(#uo-recorte)">
-              <rect x="1" y="1" width="38" height="38" fill="url(#uo-fundo)"/>
-              <g transform="rotate(-20 20 19)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
-                <path d="M5 19 A15 5.2 0 0 1 35 19" stroke-opacity=".4"/>
-              </g>
-              <rect x="19" y="7.5" width="2" height="5" rx="1" fill="#ffffff"/>
-              <circle cx="20" cy="6.6" r="2.6" fill="#fde047"/>
-              <circle cx="20" cy="19" r="7" fill="#ffffff"/>
-              <path d="M13.1 20.2 H26.9" stroke="#ef4444" stroke-width="3" fill="none"/>
-              <circle cx="17.6" cy="16.4" r="1.6" fill="#dbeafe"/>
-              <path d="M0 26.5 q5 -3 10 0 t10 0 t10 0 t10 0 V40 H0 Z" fill="#0b2a6b" fill-opacity=".85"/>
-              <path d="M0 31 q5 -3 10 0 t10 0 t10 0 t10 0" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.6" stroke-linecap="round"/>
-              <g transform="rotate(-20 20 19)" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
-                <path d="M5 19 A15 5.2 0 0 0 35 19"/>
-                <circle cx="35" cy="19" r="3" fill="#fde047" stroke="none"/>
-              </g>
-            </g>
-          </svg>
-        </span>
-        <span class="rail-marca-texto">
-          <strong>UMI ORBIT</strong>
-          <small>by UMI SAN · v2.4</small>
-        </span>
-      </a>
-
+<a class="rail-marca" href="{% url 'dashboard' %}" aria-label="UMI Orbit — ir para o painel">
+  <span class="rail-marca-simbolo">
+    <img src="{% static 'img/logotipo.png' %}"
+         alt="UMI ORBIT"
+         width="60" height="45"
+  >
+  </span>
+  <span class="rail-marca-texto">
+    <strong>UMI ORBIT</strong>
+    <small>by UMI SAN · v2.4</small>
+  </span>
+</a>
       <nav class="rail-nav" aria-label="Menu principal">
 
         <div class="rail-grupo">

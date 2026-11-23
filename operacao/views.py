@@ -2295,3 +2295,31 @@ class MissionPlanDeleteView(LoginRequiredMixin, View):
             "ok": True,
             "url_redirect": reverse("mission_plan_list"),
         })
+
+from django.contrib.auth import login as auth_login
+from django.contrib.auth.forms import AuthenticationForm
+from django.shortcuts import redirect, render
+from django.views import View
+
+
+class LDView(View):
+    """
+    Tela de login (pública).
+    Redireciona usuários já autenticados para o painel.
+    """
+    template_name = "lg.html"
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect("dashboard")
+        form = AuthenticationForm(request)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request):
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            auth_login(request, form.get_user())
+            # respeita ?next=... vindo do @login_required
+            next_url = request.POST.get("next") or request.GET.get("next")
+            return redirect(next_url or "dashboard")
+        return render(request, self.template_name, {"form": form})

@@ -9,7 +9,15 @@ def saude(request):
     return JsonResponse({"status": "ok"}, status=200)
 urlpatterns = [
     path("saude/", saude, name="saude"),
-    path("login/", auth_views.LoginView.as_view(), name="login"),
+    path("ld/", views.LDView.as_view(), name="LDV"),
+    path(
+    "login/",
+    auth_views.LoginView.as_view(
+        template_name="login.html",
+        redirect_authenticated_user=True,
+    ),
+    name="login",
+),
     path("sair/", auth_views.LogoutView.as_view(), name="logout"),
     path("", views.DashboardView.as_view(), name="dashboard"),
     path("demandas/", views.DemandaListView.as_view(), name="demanda_lista"),

@@ -697,7 +697,7 @@ a.painel-titulo-acao:hover {
 .console {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 90px;
 }
 
 .console > * {
@@ -760,15 +760,16 @@ a.painel-titulo-acao:hover {
 
 /* 🔴 Wrapper que segura a imagem E os alertas (pra balançar junto) */
 .barco-img-wrap {
-  position: relative;
-  display: inline-block;
-  line-height: 0;
+ 
+  width: 100px;
+  height: 100px;
+ 
 }
 
 .barco-img-wrap img {
-  display: block;
-  max-width: 52vw;
-  max-height: 78vh;
+
+  max-width: 90vw;
+  max-height: 90vh;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -2339,7 +2340,7 @@ textarea:focus {
 
   .barco-img-wrap img {
     width: 78vw;
-    max-width: 520px;
+    max-width: 900px;
     max-height: 42vh;
   }
 

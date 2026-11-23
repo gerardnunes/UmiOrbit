@@ -95,19 +95,13 @@ WSGI_APPLICATION = "l42.wsgi.application"
 # Mantém SQLite para desenvolvimento local.
 # =========================================================
 
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": getenv("PGDATABASE"),
-        "USER": getenv("PGUSER"),
-        "PASSWORD": getenv("PGPASSWORD"),
-        "HOST": getenv("PGHOST"),
-        "PORT": getenv("PGPORT", "5432"),
-        "OPTIONS": {
-            "sslmode": "require",
-        },
-        "CONN_MAX_AGE": 0,          # Neon suspende após 5 min de inatividade
-        "CONN_HEALTH_CHECKS": True,  # evita erro de conexão fechada
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+        # Nada de USER/PASSWORD/HOST/PORT/OPTIONS/CONN_* —
+        # o backend SQLite ignora tudo isso.
     }
 }
 
@@ -195,10 +189,11 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+LOGIN_URL = "login"                 # /login/
+LOGIN_REDIRECT_URL = "dashboard"    # /painel/
+LOGOUT_REDIRECT_URL = "LDV"     # / (após sair, volta pra landing)
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
-LOGOUT_REDIRECT_URL = "login"
-
 if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True

@@ -89,20 +89,28 @@
 </section>
 
 <!-- =========================================================
-     CONSOLE
+     GRID DO CONSOLE
      ========================================================= -->
-<div class="console">
+<div class="console-grid">
 
-  <!-- Barco + prontidão -->
+  <!-- =========================================================
+       CONSOLE · BARCO COM MAR NO FUNDO DO CARD
+       ========================================================= -->
   <section class="console-barco">
     <div class="barco-moldura {{ estado }}">
+
+      <!-- Fundo: mar animado ocupando todo o card -->
       <div class="barco-cena" id="barco-cena">
-        <div class="barco-flutuante">
-          <div class="barco-img-wrap" id="barco-img-wrap">
-            <img src="{% static 'img/barco-l42.png' %}" alt="USV">
-          </div>
+        <canvas id="mar-barco" aria-hidden="true"></canvas>
+      </div>
+
+      <!-- Barco (menor) flutuando sobre o mar; marcadores entram aqui -->
+      <div class="barco-flutuante">
+        <div id="barco-img-wrap">
+          <img src="{% static 'img/barco-l42.png' %}" alt="USV" class="barco-img">
         </div>
       </div>
+
       <div class="barco-legenda">
         <span class="leg"><span class="dot ok"></span>Starlink</span>
         <span class="leg"><span class="dot ok"></span>VPN</span>
@@ -111,6 +119,7 @@
         <span class="leg-sep"></span>
         <span class="leg-hora">atualizado {{ agora|date:"H:i" }}</span>
       </div>
+
     </div>
   </section>
 
@@ -392,6 +401,90 @@
      CSS
      ========================================================= -->
 <style>
+/* ---- Grid do console ---- */
+.console-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.console-grid > .console-barco { grid-column: 1 / -1; }
+
+/* ---- Console do barco: mar no fundo do card, barco menor ---- */
+.console-barco { margin: 0; }
+.barco-moldura {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  height: 240px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, #06101c 0%, #0a1d33 50%, #0b2b47 100%);
+  box-shadow: inset 0 0 60px rgba(56,189,248,.06);
+}
+.barco-cena {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+#mar-barco {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Remove qualquer overlay/linha (scanlines, grades, reflexos) vindo do CSS global */
+.console-barco::before, .console-barco::after,
+.barco-moldura::before, .barco-moldura::after,
+.barco-cena::before, .barco-cena::after,
+.barco-flutuante::before, .barco-flutuante::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+.barco-flutuante {
+  position: absolute;
+  left: 50%;
+  bottom: 27%;
+  width: clamp(150px, 22%, 240px);
+  transform: translateX(-50%);
+  transform-origin: 50% 78%;
+  will-change: transform;
+  z-index: 2;
+}
+.barco-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.55));
+}
+
+.barco-legenda {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 18px 14px 8px;
+  font-size: .72rem;
+  color: #cfe3f5;
+  background: linear-gradient(180deg, rgba(5,10,18,0) 0%, rgba(5,10,18,.78) 100%);
+}
+.barco-legenda .leg { display: inline-flex; align-items: center; gap: 6px; }
+.barco-legenda .leg-sep { flex: 1; }
+.barco-legenda .leg-hora { color: var(--texto-suave, #aab); }
+.barco-legenda .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; background: #64748b;
+}
+.barco-legenda .dot.ok      { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.7); }
+.barco-legenda .dot.atencao { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.7); }
+
 /* ---- KPIs clicáveis ---- */
 .kpis {
   display: grid;
@@ -618,6 +711,7 @@
 .ponto-alerta:hover .ponto-tooltip,
 .ponto-incidente:hover .ponto-tooltip { opacity: 1; transform: translateX(-50%) scale(1); }
 
+
 @media (max-width: 720px) {
   .prontidao-resumo { grid-template-columns: 1fr; }
   .auditoria-grid   { grid-template-columns: 1fr 1fr; }
@@ -626,6 +720,9 @@
   .incidente-card-bloq { align-self: flex-start; }
   .banner-vazio { flex-direction: column; align-items: flex-start; }
   .banner-vazio-btn { width: 100%; text-align: center; }
+  .barco-moldura { height: 200px; }
+  .barco-flutuante { width: clamp(120px, 38%, 180px); bottom: 27%; }
+  .console-grid { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -686,5 +783,170 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+<script>
+(function(){
+  "use strict";
 
+  var cv    = document.getElementById("mar-barco");
+  var cena  = document.getElementById("barco-cena");
+  var barco = document.querySelector(".barco-flutuante");
+  if (!cv) return;
+
+  var cx = cv.getContext("2d");
+  var W = 0, H = 0, T = 0, last = 0, vis = true, raf = 0, fov = 600;
+  var heave = 0, pitch = 0;
+  var reduz = matchMedia("(prefers-reduced-motion:reduce)").matches;
+
+  /* Malha 3D (mesmo estilo futurista) */
+  var C = 46, R = 30;
+  var CT = .94, ST = .34;       // inclinação da câmera
+  var AMP = .42;                // altura das ondas
+  var VEL = 1;                  // velocidade do avanço (1 = padrão)
+
+  /* Superfície: as cristas correm da proa (esq.) para a popa (dir.) = barco avançando */
+  function onda(x, z, t){
+    return AMP * (
+      Math.sin(x * 1.1 - t * 1.7) +
+      Math.cos(z * .9  + t * .9)  +
+      Math.sin((x + z) * .6 - t * 1.2)
+    ) * .4;
+  }
+
+  /* Projeção em perspectiva do ponto (x, z) com altura y */
+  function proj(x, z, y, yw){
+    var sy = Math.sin(yw), cy = Math.cos(yw);
+    var x2 = x * cy - z * sy;
+    var z2 = x * sy + z * cy;
+    var y3 = y * CT + z2 * ST;
+    var z3 = z2 * CT - y * ST;
+    var s  = fov / (z3 + 8.2);
+    return [W / 2 + x2 * s, H * .70 - y3 * s, z3];
+  }
+
+  function size(){
+    var dpr = Math.min(devicePixelRatio || 1, 1.5);
+    W = cv.clientWidth;
+    H = cv.clientHeight;
+    if (!W || !H) return;
+    fov = Math.min(Math.max(W, 400), 1000);
+    cv.width  = W * dpr;
+    cv.height = H * dpr;
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (reduz) quadro(0);
+  }
+
+  function mar(yw){
+    var P = [], i, j;
+    for (j = 0; j < R; j++){
+      P[j] = [];
+      for (i = 0; i < C; i++){
+        var x = (i - C / 2) * .55;
+        var z = (j - R / 2) * .55;
+        P[j][i] = proj(x, z, onda(x, z, T), yw);
+      }
+    }
+
+    cx.lineWidth = 1;
+
+    for (j = 0; j < R; j++){
+      var a = Math.max(.05, Math.min(.75, .85 - (j / R) * .8));
+      cx.strokeStyle = "rgba(56,189,248," + a + ")";
+      cx.beginPath();
+      for (i = 0; i < C; i++){
+        if (i) cx.lineTo(P[j][i][0], P[j][i][1]);
+        else   cx.moveTo(P[j][i][0], P[j][i][1]);
+      }
+      cx.stroke();
+    }
+    for (i = 0; i < C; i++){
+      cx.strokeStyle = "rgba(125,211,252,.22)";
+      cx.beginPath();
+      for (j = 0; j < R; j++){
+        if (j) cx.lineTo(P[j][i][0], P[j][i][1]);
+        else   cx.moveTo(P[j][i][0], P[j][i][1]);
+      }
+      cx.stroke();
+    }
+  }
+
+  /* O barco lê a MESMA superfície da malha, na linha onde ele está (z = 0) */
+  function moverBarco(dt, yw){
+    if (!barco) return;
+    var L  = barco.offsetWidth || 200;
+    var s0 = fov / 8.2;                       // escala de pixels na linha do barco
+    var d  = (L * .38) / s0;                  // meia-distância proa/popa em unidades do mundo
+
+    var pb = proj(-d, 0, onda(-d, 0, T), yw); // proa
+    var pc = proj( 0, 0, onda( 0, 0, T), yw); // centro
+    var ps = proj( d, 0, onda( d, 0, T), yw); // popa
+    var repouso = proj(0, 0, 0, yw)[1];
+
+    var alvoH = pc[1] - repouso;              // sobe/desce junto com a onda
+    var alvoP = -Math.atan2(ps[1] - pb[1], ps[0] - pb[0]) * 180 / Math.PI;
+    alvoP += Math.sin(T * 1.3) * .6;          // leve balanço lateral
+    alvoP = Math.max(-12, Math.min(12, alvoP));
+
+    var k = 1 - Math.exp(-dt * 9);            // suavização independente do fps
+    heave += (alvoH - heave) * k;
+    pitch += (alvoP - pitch) * k;
+
+    barco.style.transform =
+      "translate(-50%," + heave.toFixed(2) + "px) rotate(" + pitch.toFixed(2) + "deg)";
+    return pc;
+  }
+
+  function quadro(dt){
+    if (!W || !H) return;
+    T += dt * VEL;
+    var yw = Math.sin(T * .25) * .10;         // balanço automático suave da câmera
+
+    cx.clearRect(0, 0, W, H);
+    mar(yw);
+
+    var pc = moverBarco(dt, yw);
+    if (pc){                                   // brilho suave sob o casco
+      var g = cx.createRadialGradient(pc[0], pc[1], 4, pc[0], pc[1], Math.max(80, W * .16));
+      g.addColorStop(0, "rgba(56,189,248,.20)");
+      g.addColorStop(1, "rgba(56,189,248,0)");
+      cx.fillStyle = g;
+      cx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function loop(now){
+    if (!vis){ raf = 0; return; }
+    var dt = Math.min((now - last) / 1000, .05);
+    last = now;
+    quadro(dt);
+    raf = requestAnimationFrame(loop);
+  }
+  function iniciar(){
+    if (reduz || raf) return;
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
+  }
+
+  size();
+  var rzTimer;
+  addEventListener("resize", function(){
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(size, 120);
+  });
+  if (cena && "ResizeObserver" in window){
+    new ResizeObserver(function(){
+      clearTimeout(rzTimer);
+      rzTimer = setTimeout(size, 120);
+    }).observe(cena);
+  }
+
+  /* Pausa quando o card sai da tela */
+  new IntersectionObserver(function(e){
+    var agora = e[0].isIntersecting;
+    if (agora && !vis){ vis = true; iniciar(); }
+    else if (!agora){ vis = false; }
+  }).observe(cv);
+
+  if (reduz) quadro(0); else iniciar();
+})();
+</script>
 {% endblock %}

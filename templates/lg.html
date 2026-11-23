@@ -1,0 +1,489 @@
+{% load static %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · UMI ORBIT L42</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    /* ===== Variáveis locais (herdam o tema do app) ===== */
+    :root {
+      --uo-azul-1: #1e40af;
+      --uo-azul-2: #0ea5e9;
+      --uo-fundo:  #070d1a;
+      --uo-painel: #0d1526;
+      --uo-linha:  rgba(255,255,255,.08);
+      --uo-texto:  #e6edf3;
+      --uo-suave:  #93a4c0;
+      --uo-erro:   #ef4444;
+      --uo-ok:     #22c55e;
+      --uo-aviso:  #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: inherit;
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(14,165,233,.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(30,64,175,.22), transparent 60%),
+        var(--uo-fundo);
+      color: var(--uo-texto);
+      overflow-x: hidden;
+    }
+
+    /* ===== Layout de duas colunas ===== */
+    .login-shell {
+      display: grid;
+      grid-template-columns: minmax(360px, 460px) 1fr;
+      min-height: 100vh;
+    }
+
+    /* ---------- Coluna esquerda: formulário ---------- */
+    .login-painel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px 44px;
+      background: linear-gradient(180deg, rgba(13,21,38,.85), rgba(7,13,26,.95));
+      border-right: 1px solid var(--uo-linha);
+      position: relative;
+      z-index: 2;
+    }
+
+    .login-marca {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .login-marca svg { width: 44px; height: 44px; }
+    .login-marca strong { display: block; font-size: 1rem; letter-spacing: .12em; }
+    .login-marca small  { display: block; font-size: .72rem; color: var(--uo-suave); }
+
+    .login-titulo {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 6px;
+      letter-spacing: -.01em;
+    }
+    .login-sub {
+      margin: 0 0 28px;
+      color: var(--uo-suave);
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    .campo { margin-bottom: 16px; }
+    .campo label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--uo-suave);
+      margin-bottom: 6px;
+    }
+    .campo input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--uo-linha);
+      background: rgba(255,255,255,.03);
+      color: var(--uo-texto);
+      font-size: .95rem;
+      transition: border-color .15s, background .15s, box-shadow .15s;
+    }
+    .campo input:focus {
+      outline: none;
+      border-color: var(--uo-azul-2);
+      background: rgba(14,165,233,.06);
+      box-shadow: 0 0 0 3px rgba(14,165,233,.18);
+    }
+    .campo input[aria-invalid="true"] {
+      border-color: var(--uo-erro);
+      box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+    }
+    .campo-erro {
+      display: block;
+      margin-top: 6px;
+      font-size: .78rem;
+      color: #f87171;
+    }
+
+    .alerta {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: .85rem;
+      border: 1px solid transparent;
+      margin-bottom: 12px;
+    }
+    .alerta-erro, .alerta-error {
+      background: rgba(239,68,68,.12);
+      border-color: rgba(239,68,68,.45);
+      color: #fca5a5;
+    }
+    .alerta-success {
+      background: rgba(34,197,94,.12);
+      border-color: rgba(34,197,94,.45);
+      color: #86efac;
+    }
+    .alerta-info, .alerta-warning {
+      background: rgba(245,158,11,.10);
+      border-color: rgba(245,158,11,.40);
+      color: #fcd34d;
+    }
+
+    .login-acoes {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 0;
+      font-weight: 600;
+      font-size: .92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .1s, background .15s, box-shadow .15s;
+    }
+    .btn-primario {
+      background: linear-gradient(135deg, var(--uo-azul-1), var(--uo-azul-2));
+      color: #fff;
+      box-shadow: 0 6px 20px -6px rgba(14,165,233,.55);
+    }
+    .btn-primario:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(14,165,233,.7); }
+    .btn-secundario {
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--uo-linha);
+      color: var(--uo-texto);
+    }
+    .btn-secundario:hover { background: rgba(255,255,255,.08); }
+
+    .login-ajuda {
+      margin-top: 18px;
+      font-size: .82rem;
+      text-align: center;
+    }
+    .login-ajuda a { color: var(--uo-suave); text-decoration: none; }
+    .login-ajuda a:hover { color: var(--uo-texto); text-decoration: underline; }
+
+    /* ---------- Coluna direita: vitrine ---------- */
+    .login-vitrine {
+      position: relative;
+      overflow: hidden;
+      padding: 64px 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 32px;
+    }
+    /* Grade animada de fundo */
+    .login-vitrine::before {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      background-image:
+        linear-gradient(rgba(14,165,233,.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(14,165,233,.06) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(circle at 60% 40%, #000 0%, transparent 70%);
+      animation: deriva 40s linear infinite;
+      z-index: 0;
+    }
+    @keyframes deriva {
+      from { transform: translate3d(0,0,0); }
+      to   { transform: translate3d(-56px,-56px,0); }
+    }
+
+    .vitrine-conteudo { position: relative; z-index: 1; max-width: 720px; }
+
+    .vitrine-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .72rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--uo-azul-2);
+      margin-bottom: 18px;
+    }
+    .vitrine-eyebrow .pulso {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--uo-ok);
+      box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+      animation: pulso 2s infinite;
+    }
+    @keyframes pulso {
+      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+      70%  { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
+      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+    }
+
+    .vitrine-titulo {
+      font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      margin: 0 0 14px;
+    }
+    .vitrine-titulo b {
+      background: linear-gradient(90deg, #7dd3fc, #38bdf8 40%, #a5b4fc);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .vitrine-desc {
+      color: var(--uo-suave);
+      font-size: 1rem;
+      line-height: 1.6;
+      max-width: 56ch;
+      margin: 0 0 28px;
+    }
+
+    /* Cartões dos módulos reais do sistema */
+    .vitrine-modulos {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .modulo {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--uo-linha);
+      border-radius: 12px;
+      padding: 14px;
+      transition: transform .2s, border-color .2s, background .2s;
+    }
+    .modulo:hover {
+      transform: translateY(-2px);
+      border-color: rgba(14,165,233,.4);
+      background: rgba(14,165,233,.06);
+    }
+    .modulo .ic {
+      display: inline-flex;
+      width: 30px; height: 30px;
+      align-items: center; justify-content: center;
+      border-radius: 8px;
+      background: rgba(14,165,233,.14);
+      color: #7dd3fc;
+      font-size: .9rem;
+      margin-bottom: 8px;
+    }
+    .modulo strong { display: block; font-size: .86rem; }
+    .modulo small  { display: block; color: var(--uo-suave); font-size: .74rem; margin-top: 2px; }
+
+    /* Mockup estilizado do painel */
+    .mockup {
+      position: relative;
+      border-radius: 14px;
+      border: 1px solid var(--uo-linha);
+      background: linear-gradient(180deg, #0f172a, #0b1220);
+      padding: 14px;
+      box-shadow: 0 30px 60px -30px rgba(0,0,0,.8);
+    }
+    .mockup-topo {
+      display: flex; align-items: center; gap: 6px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--uo-linha); margin-bottom: 12px;
+    }
+    .mockup-topo i {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: rgba(255,255,255,.15);
+    }
+    .mockup-topo i:nth-child(1) { background: #ef4444; }
+    .mockup-topo i:nth-child(2) { background: #f59e0b; }
+    .mockup-topo i:nth-child(3) { background: #22c55e; }
+    .mockup-topo span {
+      margin-left: auto; font-size: .68rem; color: var(--uo-suave); letter-spacing: .08em;
+    }
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .mockup-card {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--uo-linha);
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 62px;
+    }
+    .mockup-card small { display: block; color: var(--uo-suave); font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; }
+    .mockup-card b { display: block; margin-top: 6px; font-size: .95rem; }
+    .mockup-card .barra {
+      height: 4px; border-radius: 4px; margin-top: 8px;
+      background: linear-gradient(90deg, var(--uo-azul-2), rgba(14,165,233,.15));
+    }
+    .mockup-card .barra.verde { background: linear-gradient(90deg, var(--uo-ok), rgba(34,197,94,.15)); }
+    .mockup-card .barra.aviso { background: linear-gradient(90deg, var(--uo-aviso), rgba(245,158,11,.15)); }
+    .mockup-card .barra.erro  { background: linear-gradient(90deg, var(--uo-erro), rgba(239,68,68,.15)); }
+
+    /* ===== Responsivo ===== */
+    @media (max-width: 980px) {
+      .login-shell { grid-template-columns: 1fr; }
+      .login-painel { border-right: 0; border-bottom: 1px solid var(--uo-linha); }
+      .login-vitrine { padding: 48px 28px; }
+      .vitrine-modulos { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 420px) {
+      .login-acoes { grid-template-columns: 1fr; }
+      .vitrine-modulos { grid-template-columns: 1fr; }
+      .login-painel { padding: 32px 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-shell">
+
+  <!-- =====================================================
+       COLUNA ESQUERDA — FORMULÁRIO
+       ===================================================== -->
+  <aside class="login-painel">
+{% load static %}
+
+<a class="login-marca" href="{% url 'login' %}">
+  <img src="{% static 'img/logotipo.png' %}"
+       alt="UMI ORBIT"
+       width="100" height="80"
+       style="border-radius:10px;">
+  <span>
+    <strong>UMI ORBIT</strong>
+    <small>by UMI SAN · v2.4</small>
+  </span>
+</a>
+
+    <h1 class="login-titulo">Acessar o sistema</h1>
+    <p class="login-sub">Entre com suas credenciais para operar o USV <b>L42</b>.</p>
+
+    {% if messages %}
+      <div class="mensagens-login">
+        {% for m in messages %}
+          <div class="alerta alerta-{{ m.tags|default:'info' }}">{{ m }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+      <div class="alerta alerta-erro" role="alert">
+        {% for erro in form.non_field_errors %}<div>{{ erro }}</div>{% endfor %}
+      </div>
+    {% endif %}
+
+    <form method="post" autocomplete="on" novalidate>
+      {% csrf_token %}
+
+      <div class="campo">
+        <label for="{{ form.username.id_for_label }}">Usuário</label>
+        <input
+          type="text"
+          name="{{ form.username.name }}"
+          id="{{ form.username.id_for_label }}"
+          value="{{ form.username.value|default:'' }}"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          autofocus
+          required
+          {% if form.username.errors %}aria-invalid="true"{% endif %}
+        >
+        {% if form.username.errors %}
+          <small class="campo-erro">{{ form.username.errors|join:", " }}</small>
+        {% endif %}
+      </div>
+
+      <div class="campo">
+        <label for="{{ form.password.id_for_label }}">Senha</label>
+        <input
+          type="password"
+          name="{{ form.password.name }}"
+          id="{{ form.password.id_for_label }}"
+          autocomplete="current-password"
+          required
+          {% if form.password.errors %}aria-invalid="true"{% endif %}
+        >
+        {% if form.password.errors %}
+          <small class="campo-erro">{{ form.password.errors|join:", " }}</small>
+        {% endif %}
+      </div>
+
+      <input type="hidden" name="next" value="{{ next|default:'' }}">
+
+      <div class="login-acoes">
+        <button class="btn btn-primario" type="submit">Entrar →</button>
+        <a class="btn btn-secundario" href="{% url 'cadastro' %}">Criar conta</a>
+      </div>
+    </form>
+
+    {% url 'password_reset' as url_reset %}
+    {% if url_reset %}
+      <p class="login-ajuda"><a href="{{ url_reset }}">Esqueci minha senha</a></p>
+    {% endif %}
+
+  </aside>
+
+  <!-- =====================================================
+       COLUNA DIREITA — VITRINE DO PRODUTO
+       ===================================================== -->
+  <section class="login-vitrine" aria-label="Sobre a plataforma">
+
+    <div class="vitrine-conteudo">
+
+      <span class="vitrine-eyebrow">
+        <span class="pulso" aria-hidden="true"></span>
+        Plataforma operacional · USV Polaris L42
+      </span>
+
+      <h2 class="vitrine-titulo">
+        Opere o <b>L42</b> com<br>visão total e rastreável.
+      </h2>
+
+      <p class="vitrine-desc">
+        Missões, manutenção, incidentes, checklists e aprovações em um único console.
+        Cada ação registrada, cada recurso rastreável — do planejamento à execução.
+      </p>
+
+      <!-- Módulos REAIS do sistema (mesmos do rail) -->
+      <div class="vitrine-modulos">
+        <div class="modulo"><span class="ic">▦</span><strong>Visão geral</strong><small>Dashboard consolidado</small></div>
+        <div class="modulo"><span class="ic">≡</span><strong>Missões</strong><small>Execução e histórico</small></div>
+        <div class="modulo"><span class="ic">▤</span><strong>Planejamento</strong><small>Planos de missão</small></div>
+        <div class="modulo"><span class="ic">▥</span><strong>Demanda</strong><small>Equipamento</small></div>
+        <div class="modulo"><span class="ic">⚙</span><strong>Manutenção</strong><small>Ordens e registros</small></div>
+        <div class="modulo"><span class="ic">☑</span><strong>Incidentes</strong><small>Ocorrências</small></div>
+        <div class="modulo"><span class="ic">☑</span><strong>Checklists</strong><small>Rotinas operacionais</small></div>
+        <div class="modulo"><span class="ic">✓</span><strong>Aprovações</strong><small>Fluxo de diretoria</small></div>
+        <div class="modulo"><span class="ic">♟</span><strong>Equipe</strong><small>Perfis e papéis</small></div>
+      </div>
+
+      <!-- Mockup estilizado do dashboard -->
+      <div class="mockup" aria-hidden="true">
+        <div class="mockup-topo">
+          <i></i><i></i><i></i>
+          <span>UMI ORBIT · VISÃO GERAL</span>
+        </div>
+        <div class="mockup-grid">
+          <div class="mockup-card"><small>Missões ativas</small><b>3</b><div class="barra"></div></div>
+          <div class="mockup-card"><small>Checklists</small><b>12</b><div class="barra verde"></div></div>
+          <div class="mockup-card"><small>Incidentes</small><b>1</b><div class="barra aviso"></div></div>
+          <div class="mockup-card"><small>Aprovações</small><b>4</b><div class="barra erro"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>
