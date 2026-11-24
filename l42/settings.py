@@ -95,6 +95,12 @@ WSGI_APPLICATION = "l42.wsgi.application"
 # Mantém SQLite para desenvolvimento local.
 # =========================================================
 
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # carrega o .env localmente; na Render, as variáveis vêm do painel
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

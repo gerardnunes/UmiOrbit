@@ -351,7 +351,7 @@
        ===================================================== -->
   <aside class="login-painel">
 {% load static %}
-
+<input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
 <a class="login-marca" href="{% url 'login' %}">
   <img src="{% static 'img/logotipo.png' %}"
        alt="UMI ORBIT"

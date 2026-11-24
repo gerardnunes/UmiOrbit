@@ -1078,16 +1078,30 @@ class ChecklistModeloView(LoginRequiredMixin, View):
         resp["Content-Disposition"] = 'attachment; filename="modelo_checklist_l42.xlsx"'
         return resp
 
-
+from django.urls import reverse
+from urllib.parse import urlencode
 # =========================================================
 # AUDITORIA
 # =========================================================
 class AuditoriaAccessMixin(AccessMixin):
+    """
+    Se o checklist exige login e o usuário não está autenticado,
+    manda para a LDView (name='LDV', URL /ld/) com ?next=<url atual>,
+    preservando o token para retornar após o login.
+    """
+    login_url = "/ld/"          # sobrescreve o padrão
+    raise_exception = False
+
     def dispatch(self, request, *args, **kwargs):
         token = kwargs.get("token")
         checklist = get_object_or_404(Checklist, token_auditoria=token)
+
         if checklist.exige_login_auditoria and not request.user.is_authenticated:
-            return self.handle_no_permission()
+            # preserva a URL completa (com token e possível query string)
+            destino = request.get_full_path()
+            url_login = reverse("LDV")  # '/ld/'
+            return redirect(f"{url_login}?{urlencode({'next': destino})}")
+
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -2302,11 +2316,9 @@ from django.shortcuts import redirect, render
 from django.views import View
 
 
+from django.utils.http import url_has_allowed_host_and_scheme
+
 class LDView(View):
-    """
-    Tela de login (pública).
-    Redireciona usuários já autenticados para o painel.
-    """
     template_name = "lg.html"
 
     def get(self, request):
@@ -2319,7 +2331,12 @@ class LDView(View):
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             auth_login(request, form.get_user())
-            # respeita ?next=... vindo do @login_required
             next_url = request.POST.get("next") or request.GET.get("next")
-            return redirect(next_url or "dashboard")
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(next_url)
+            return redirect("dashboard")
         return render(request, self.template_name, {"form": form})
