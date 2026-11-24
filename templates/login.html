@@ -96,8 +96,9 @@ a:focus-visible,.btn:focus-visible{outline:2px solid var(--cy);outline-offset:3p
 </head>
 <body>
 <header>
- <a class="logo" href="#topo">UMI ORBIT<small>by UMI SAN · v2.4</small></a>
- <a class="btn p" href="/login" id="acesso">Acessar o sistema</a>
+<a class="logo" href="#">UMI ORBIT<small>by UMI SAN · v2.4</small></a>
+
+<a class="btn p" href="{% url 'LDV' %}" id="acesso">Acessar o sistema</a>
 </header>
 
 <main id="topo">
@@ -162,7 +163,7 @@ a:focus-visible,.btn:focus-visible{outline:2px solid var(--cy);outline-offset:3p
  <p class="mono rv">UMI SAN</p>
  <h2 class="rv">O oceano é imprevisível. A sua operação não precisa ser.</h2>
  <p class="sub rv">Missões, checklists e o painel da embarcação esperam por você. Entre e assuma o comando.</p>
- <a class="btn p rv" href="/login">Assumir o comando</a>
+ <a class="btn p" href="{% url 'LDV' %}" id="acesso">Assumir o comando</a>
 </section>
 </main>
 <footer><span>UMI ORBIT by UMI SAN · v2.4</span><span>Uso restrito a usuários autorizados</span></footer>
