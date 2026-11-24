@@ -946,8 +946,9 @@ class ChecklistImportView(TrabalhadorRequiredMixin, View):
         )
 
         try:
-            with importacao.arquivo.open("rb") as f:
-                resultado = ler_excel(io.BytesIO(f.read()))
+            # Funciona tanto em disco local quanto no S3
+            conteudo = importacao.arquivo.read()
+            resultado = ler_excel(io.BytesIO(conteudo))
         except Exception as exc:
             importacao.erros = f"Falha ao ler a planilha: {exc}"
             importacao.save(update_fields=["erros"])
