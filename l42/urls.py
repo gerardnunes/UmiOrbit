@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("TESTING/", admin.site.urls),
     path("", include("operacao.urls")),
     # ... o resto que você já tinha ...
 ]

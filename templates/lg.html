@@ -2,343 +2,707 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b12">
   <title>Entrar · UMI ORBIT L42</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <style>
-    /* ===== Variáveis locais (herdam o tema do app) ===== */
+    /* ============================================================
+       DESIGN TOKENS — unificados com landing.html
+       ============================================================ */
     :root {
-      --uo-azul-1: #1e40af;
-      --uo-azul-2: #0ea5e9;
-      --uo-fundo:  #070d1a;
-      --uo-painel: #0d1526;
-      --uo-linha:  rgba(255,255,255,.08);
-      --uo-texto:  #e6edf3;
-      --uo-suave:  #93a4c0;
-      --uo-erro:   #ef4444;
-      --uo-ok:     #22c55e;
-      --uo-aviso:  #f59e0b;
+      --bg:        #070b12;
+      --panel:     #0e1621;
+      --panel-2:   #0b1220;
+      --line:      #1b2736;
+      --line-soft: rgba(255,255,255,.06);
+      --tx:        #e8eef6;
+      --mut:       #8696a9;
+      --mut-2:     #5b6b80;
+      --cy:        #4cc9e0;
+      --cy-2:      #2a8fa3;
+      --cy-glow:   rgba(76,201,224,.18);
+      --cy-soft:   rgba(76,201,224,.08);
+      --blue:      #3b82f6;
+      --gr:        #3ddc84;
+      --am:        #f5a623;
+      --rd:        #ff5a5f;
+      --sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+      --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 16px;
+      --ease: cubic-bezier(.2,.8,.2,1);
+      --shadow-lg: 0 30px 80px -30px rgba(0,0,0,.8), 0 0 60px rgba(76,201,224,.10);
     }
 
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
     html, body { height: 100%; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
-      font-family: inherit;
+      font-family: var(--sans);
       background:
-        radial-gradient(1200px 600px at 80% -10%, rgba(14,165,233,.18), transparent 60%),
-        radial-gradient(900px 500px at -10% 110%, rgba(30,64,175,.22), transparent 60%),
-        var(--uo-fundo);
-      color: var(--uo-texto);
+        radial-gradient(1200px 600px at 80% -10%, var(--cy-glow), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(59,130,246,.16), transparent 60%),
+        var(--bg);
+      color: var(--tx);
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
-    /* ===== Layout de duas colunas ===== */
+    /* ============================================================
+       SHELL
+       ============================================================ */
     .login-shell {
       display: grid;
-      grid-template-columns: minmax(360px, 460px) 1fr;
+      grid-template-columns: minmax(400px, 520px) 1fr;
       min-height: 100vh;
+      min-height: 100dvh;
     }
 
-    /* ---------- Coluna esquerda: formulário ---------- */
+    /* ============================================================
+       COLUNA ESQUERDA — FORMULÁRIO
+       ============================================================ */
     .login-painel {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 48px 44px;
-      background: linear-gradient(180deg, rgba(13,21,38,.85), rgba(7,13,26,.95));
-      border-right: 1px solid var(--uo-linha);
+      padding: 48px clamp(20px, 5vw, 64px);
+      background:
+        linear-gradient(180deg, rgba(14,22,33,.92), rgba(7,11,18,.98));
+      border-right: 1px solid var(--line);
       position: relative;
       z-index: 2;
+      backdrop-filter: blur(8px);
     }
 
-    .login-marca {
+    /* Marca */
+    .marca {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 36px;
+      gap: 14px;
+      margin-bottom: 44px;
       text-decoration: none;
       color: inherit;
+      width: fit-content;
     }
-    .login-marca svg { width: 44px; height: 44px; }
-    .login-marca strong { display: block; font-size: 1rem; letter-spacing: .12em; }
-    .login-marca small  { display: block; font-size: .72rem; color: var(--uo-suave); }
-
-    .login-titulo {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin: 0 0 6px;
-      letter-spacing: -.01em;
+    .marca__logo {
+      width: 48px; height: 48px;
+      border-radius: var(--r-md);
+      object-fit: cover;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      box-shadow: 0 4px 20px rgba(76,201,224,.15);
+      flex-shrink: 0;
     }
-    .login-sub {
-      margin: 0 0 28px;
-      color: var(--uo-suave);
-      font-size: .9rem;
-      line-height: 1.5;
-    }
-
-    .campo { margin-bottom: 16px; }
-    .campo label {
+    .marca__txt strong {
       display: block;
-      font-size: .78rem;
-      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: .14em;
+      font-weight: 700;
+    }
+    .marca__txt small {
+      display: block;
+      font-family: var(--mono);
+      font-size: .68rem;
       letter-spacing: .06em;
+      color: var(--mut);
+      margin-top: 2px;
+    }
+
+    /* Cabeçalho */
+    .login-head { margin-bottom: 32px; }
+    .login-head__eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: .68rem;
+      letter-spacing: .18em;
       text-transform: uppercase;
-      color: var(--uo-suave);
-      margin-bottom: 6px;
+      color: var(--cy);
+      margin-bottom: 12px;
+    }
+    .login-head__eyebrow .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gr);
+      box-shadow: 0 0 0 0 rgba(61,220,132,.6);
+      animation: pulso 2s infinite;
+    }
+    .login-head h1 {
+      font-size: clamp(1.4rem, 4.5vw, 1.75rem);
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: -.015em;
+      margin: 0 0 8px;
+    }
+    .login-head p {
+      margin: 0;
+      color: var(--mut);
+      font-size: .92rem;
+      line-height: 1.55;
+      max-width: 42ch;
+    }
+    .login-head p b { color: var(--tx); font-weight: 600; }
+
+    /* Alertas */
+    .alerta {
+      padding: 12px 14px;
+      border-radius: var(--r-sm);
+      font-size: .85rem;
+      border: 1px solid transparent;
+      margin-bottom: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      line-height: 1.45;
+      animation: slideDown .35s var(--ease);
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: none; }
+    }
+    .alerta svg { flex: 0 0 16px; margin-top: 1px; }
+    .alerta-erro, .alerta-error {
+      background: rgba(255,90,95,.10);
+      border-color: rgba(255,90,95,.40);
+      color: #ff9ea1;
+    }
+    .alerta-success {
+      background: rgba(61,220,132,.10);
+      border-color: rgba(61,220,132,.40);
+      color: #7ee8a7;
+    }
+    .alerta-info, .alerta-warning {
+      background: rgba(245,166,35,.10);
+      border-color: rgba(245,166,35,.38);
+      color: #f7c46a;
+    }
+
+    /* Campos com float label */
+    .campo {
+      position: relative;
+      margin-bottom: 18px;
     }
     .campo input {
       width: 100%;
-      padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid var(--uo-linha);
-      background: rgba(255,255,255,.03);
-      color: var(--uo-texto);
-      font-size: .95rem;
-      transition: border-color .15s, background .15s, box-shadow .15s;
+      padding: 20px 14px 8px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+      color: var(--tx);
+      font-size: 16px; /* evita zoom no iOS */
+      font-family: inherit;
+      transition: border-color .18s var(--ease),
+                  background .18s var(--ease),
+                  box-shadow .18s var(--ease);
     }
+    .campo input:hover { background: rgba(255,255,255,.04); }
     .campo input:focus {
       outline: none;
-      border-color: var(--uo-azul-2);
-      background: rgba(14,165,233,.06);
-      box-shadow: 0 0 0 3px rgba(14,165,233,.18);
+      border-color: var(--cy);
+      background: rgba(76,201,224,.05);
+      box-shadow: 0 0 0 3px var(--cy-glow);
     }
     .campo input[aria-invalid="true"] {
-      border-color: var(--uo-erro);
-      box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+      border-color: var(--rd);
+      box-shadow: 0 0 0 3px rgba(255,90,95,.15);
     }
+    .campo label {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: var(--mono);
+      font-size: .78rem;
+      letter-spacing: .06em;
+      color: var(--mut);
+      pointer-events: none;
+      transition: all .18s var(--ease);
+      background: transparent;
+    }
+    .campo input:focus + label,
+    .campo input:not(:placeholder-shown) + label,
+    .campo input[aria-invalid="true"] + label {
+      top: 10px;
+      transform: translateY(0);
+      font-size: .64rem;
+      color: var(--cy);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .campo input[aria-invalid="true"]:focus + label,
+    .campo input[aria-invalid="true"]:not(:placeholder-shown) + label {
+      color: var(--rd);
+    }
+
+    /* Botão de mostrar senha */
+    .campo--senha input { padding-right: 46px; }
+    .toggle-senha {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px; height: 40px; /* alvo de toque */
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+      color: var(--mut);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: color .15s, background .15s;
+    }
+    .toggle-senha:hover { color: var(--tx); background: rgba(255,255,255,.05); }
+    .toggle-senha:focus-visible { outline: 2px solid var(--cy); outline-offset: 1px; }
+    .toggle-senha svg { width: 18px; height: 18px; }
+
     .campo-erro {
       display: block;
       margin-top: 6px;
       font-size: .78rem;
-      color: #f87171;
+      color: #ff9ea1;
+      animation: slideDown .25s var(--ease);
     }
 
-    .alerta {
-      padding: 10px 12px;
-      border-radius: 10px;
+    /* Linha: lembrar + esqueci */
+    .login-linha {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 4px 0 22px;
       font-size: .85rem;
-      border: 1px solid transparent;
-      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
-    .alerta-erro, .alerta-error {
-      background: rgba(239,68,68,.12);
-      border-color: rgba(239,68,68,.45);
-      color: #fca5a5;
+    .check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--mut);
+      cursor: pointer;
+      user-select: none;
+      min-height: 32px;
     }
-    .alerta-success {
-      background: rgba(34,197,94,.12);
-      border-color: rgba(34,197,94,.45);
-      color: #86efac;
+    .check input { position: absolute; opacity: 0; pointer-events: none; }
+    .check__box {
+      width: 18px; height: 18px;
+      border-radius: 4px;
+      border: 1.5px solid var(--line);
+      background: rgba(255,255,255,.03);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s var(--ease);
+      flex-shrink: 0;
     }
-    .alerta-info, .alerta-warning {
-      background: rgba(245,158,11,.10);
-      border-color: rgba(245,158,11,.40);
-      color: #fcd34d;
+    .check__box svg { width: 10px; height: 10px; opacity: 0; transform: scale(.5); transition: all .15s var(--ease); }
+    .check input:checked + .check__box {
+      background: var(--cy);
+      border-color: var(--cy);
     }
+    .check input:checked + .check__box svg { opacity: 1; transform: none; color: #04141a; }
+    .check input:focus-visible + .check__box { outline: 2px solid var(--cy); outline-offset: 2px; }
+    .check:hover .check__box { border-color: var(--cy-2); }
 
-    .login-acoes {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 22px;
+    .login-linha a {
+      color: var(--mut);
+      text-decoration: none;
+      transition: color .15s;
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
     }
+    .login-linha a:hover { color: var(--cy); }
+
+    /* Botões */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 12px 18px;
-      border-radius: 10px;
-      border: 0;
+      padding: 13px 20px;
+      min-height: 44px; /* alvo de toque */
+      border-radius: var(--r-sm);
+      border: 1px solid transparent;
+      font-family: inherit;
       font-weight: 600;
       font-size: .92rem;
       cursor: pointer;
       text-decoration: none;
-      transition: transform .1s, background .15s, box-shadow .15s;
+      transition: transform .15s var(--ease),
+                  background .2s var(--ease),
+                  color .2s var(--ease),
+                  border-color .2s var(--ease),
+                  box-shadow .2s var(--ease);
     }
-    .btn-primario {
-      background: linear-gradient(135deg, var(--uo-azul-1), var(--uo-azul-2));
-      color: #fff;
-      box-shadow: 0 6px 20px -6px rgba(14,165,233,.55);
-    }
-    .btn-primario:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(14,165,233,.7); }
-    .btn-secundario {
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--uo-linha);
-      color: var(--uo-texto);
-    }
-    .btn-secundario:hover { background: rgba(255,255,255,.08); }
+    .btn:active { transform: translateY(0) scale(.99); }
+    .btn:focus-visible { outline: 2px solid var(--cy); outline-offset: 3px; }
+    .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 
-    .login-ajuda {
-      margin-top: 18px;
-      font-size: .82rem;
-      text-align: center;
+    .btn--primario {
+      width: 100%;
+      background: var(--cy);
+      color: #04141a;
+      border-color: var(--cy);
+      box-shadow: 0 8px 24px -10px rgba(76,201,224,.6);
+      position: relative;
+      overflow: hidden;
     }
-    .login-ajuda a { color: var(--uo-suave); text-decoration: none; }
-    .login-ajuda a:hover { color: var(--uo-texto); text-decoration: underline; }
+    .btn--primario:hover {
+      background: #7ddcee;
+      box-shadow: 0 12px 28px -10px rgba(76,201,224,.8);
+      transform: translateY(-1px);
+    }
+    .btn--primario[data-loading="true"] {
+      pointer-events: none;
+      color: transparent;
+    }
+    .btn--primario[data-loading="true"]::after {
+      content: "";
+      position: absolute;
+      width: 16px; height: 16px;
+      border: 2px solid #04141a;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ---------- Coluna direita: vitrine ---------- */
+    .btn--ghost {
+      width: 100%;
+      background: transparent;
+      border-color: var(--line);
+      color: var(--tx);
+    }
+    .btn--ghost:hover { border-color: var(--cy); color: var(--cy); }
+
+    /* Divisor "ou" */
+    .divisor {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 18px 0;
+      font-family: var(--mono);
+      font-size: .68rem;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--mut-2);
+    }
+    .divisor::before, .divisor::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    /* Rodapé do form */
+    .login-foot {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line-soft);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: .78rem;
+      color: var(--mut);
+      line-height: 1.5;
+    }
+    .login-foot__seg {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--mut-2);
+    }
+    .login-foot__seg svg { width: 13px; height: 13px; color: var(--gr); flex-shrink: 0; }
+    .login-foot a { color: var(--mut); text-decoration: none; }
+    .login-foot a:hover { color: var(--cy); }
+
+    /* Shake de erro */
+    .shake { animation: shake .4s var(--ease); }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%,60% { transform: translateX(-5px); }
+      40%,80% { transform: translateX(5px); }
+    }
+
+    /* ============================================================
+       COLUNA DIREITA — VITRINE
+       ============================================================ */
     .login-vitrine {
       position: relative;
       overflow: hidden;
-      padding: 64px 56px;
+      padding: 64px clamp(32px, 6vw, 80px);
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 32px;
     }
-    /* Grade animada de fundo */
     .login-vitrine::before {
       content: "";
       position: absolute;
       inset: -20%;
       background-image:
-        linear-gradient(rgba(14,165,233,.06) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(14,165,233,.06) 1px, transparent 1px);
+        linear-gradient(rgba(76,201,224,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76,201,224,.05) 1px, transparent 1px);
       background-size: 56px 56px;
       mask-image: radial-gradient(circle at 60% 40%, #000 0%, transparent 70%);
       animation: deriva 40s linear infinite;
       z-index: 0;
+      pointer-events: none;
     }
     @keyframes deriva {
       from { transform: translate3d(0,0,0); }
       to   { transform: translate3d(-56px,-56px,0); }
     }
+    .login-vitrine::after {
+      content: "";
+      position: absolute;
+      width: 70vmax; height: 70vmax;
+      left: 60%; top: 50%;
+      transform: translate(-50%,-50%);
+      background: radial-gradient(closest-side, rgba(76,201,224,.10), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
 
-    .vitrine-conteudo { position: relative; z-index: 1; max-width: 720px; }
+    .vitrine { position: relative; z-index: 1; max-width: 640px; margin-left: auto; }
 
-    .vitrine-eyebrow {
+    .vitrine__eyebrow {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: .72rem;
+      font-family: var(--mono);
+      font-size: .7rem;
       letter-spacing: .18em;
       text-transform: uppercase;
-      color: var(--uo-azul-2);
-      margin-bottom: 18px;
+      color: var(--cy);
+      margin-bottom: 20px;
+      padding: 6px 12px;
+      border: 1px solid rgba(76,201,224,.25);
+      border-radius: 99px;
+      background: rgba(76,201,224,.05);
     }
-    .vitrine-eyebrow .pulso {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--uo-ok);
-      box-shadow: 0 0 0 0 rgba(34,197,94,.6);
+    .vitrine__eyebrow .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gr);
       animation: pulso 2s infinite;
-    }
-    @keyframes pulso {
-      0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
-      70%  { box-shadow: 0 0 0 10px rgba(34,197,94,0); }
-      100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+      flex-shrink: 0;
     }
 
-    .vitrine-titulo {
-      font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+    .vitrine h2 {
+      font-size: clamp(1.8rem, 2.6vw, 2.4rem);
       line-height: 1.15;
       font-weight: 700;
       letter-spacing: -.02em;
       margin: 0 0 14px;
     }
-    .vitrine-titulo b {
-      background: linear-gradient(90deg, #7dd3fc, #38bdf8 40%, #a5b4fc);
+    .vitrine h2 b {
+      background: linear-gradient(90deg, #7dd3fc, var(--cy) 50%, #a5b4fc);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
     }
-    .vitrine-desc {
-      color: var(--uo-suave);
-      font-size: 1rem;
-      line-height: 1.6;
-      max-width: 56ch;
-      margin: 0 0 28px;
+    .vitrine p.lead {
+      color: var(--mut);
+      font-size: .98rem;
+      line-height: 1.65;
+      margin: 0 0 32px;
+      max-width: 52ch;
     }
 
-    /* Cartões dos módulos reais do sistema */
-    .vitrine-modulos {
+    /* Stats da vitrine */
+    .vitrine__stats {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 28px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      margin-bottom: 32px;
     }
-    .modulo {
-      background: rgba(255,255,255,.03);
-      border: 1px solid var(--uo-linha);
-      border-radius: 12px;
-      padding: 14px;
-      transition: transform .2s, border-color .2s, background .2s;
+    .vitrine__stat {
+      background: var(--panel);
+      padding: 16px 14px;
+      text-align: center;
     }
-    .modulo:hover {
-      transform: translateY(-2px);
-      border-color: rgba(14,165,233,.4);
-      background: rgba(14,165,233,.06);
+    .vitrine__stat b {
+      display: block;
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      color: var(--cy);
+      line-height: 1;
     }
-    .modulo .ic {
-      display: inline-flex;
-      width: 30px; height: 30px;
-      align-items: center; justify-content: center;
-      border-radius: 8px;
-      background: rgba(14,165,233,.14);
-      color: #7dd3fc;
-      font-size: .9rem;
-      margin-bottom: 8px;
+    .vitrine__stat span {
+      display: block;
+      font-family: var(--mono);
+      font-size: .62rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--mut);
+      margin-top: 6px;
     }
-    .modulo strong { display: block; font-size: .86rem; }
-    .modulo small  { display: block; color: var(--uo-suave); font-size: .74rem; margin-top: 2px; }
 
-    /* Mockup estilizado do painel */
-    .mockup {
-      position: relative;
-      border-radius: 14px;
-      border: 1px solid var(--uo-linha);
-      background: linear-gradient(180deg, #0f172a, #0b1220);
-      padding: 14px;
-      box-shadow: 0 30px 60px -30px rgba(0,0,0,.8);
+    /* Card do sistema */
+    .sistema-card {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid var(--line);
+      border-radius: var(--r-md);
+      padding: 18px;
+      box-shadow: var(--shadow-lg);
     }
-    .mockup-topo {
-      display: flex; align-items: center; gap: 6px;
-      padding-bottom: 10px; border-bottom: 1px solid var(--uo-linha); margin-bottom: 12px;
+    .sistema-card__topo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--mut);
+      letter-spacing: .08em;
     }
-    .mockup-topo i {
+    .sistema-card__topo i {
       width: 9px; height: 9px; border-radius: 50%;
-      background: rgba(255,255,255,.15);
     }
-    .mockup-topo i:nth-child(1) { background: #ef4444; }
-    .mockup-topo i:nth-child(2) { background: #f59e0b; }
-    .mockup-topo i:nth-child(3) { background: #22c55e; }
-    .mockup-topo span {
-      margin-left: auto; font-size: .68rem; color: var(--uo-suave); letter-spacing: .08em;
-    }
-    .mockup-grid {
+    .sistema-card__topo i:nth-child(1) { background: var(--rd); }
+    .sistema-card__topo i:nth-child(2) { background: var(--am); }
+    .sistema-card__topo i:nth-child(3) { background: var(--gr); }
+    .sistema-card__topo span { margin-left: auto; }
+
+    .sistema-card__grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
     }
-    .mockup-card {
+    .sc {
       background: rgba(255,255,255,.03);
-      border: 1px solid var(--uo-linha);
-      border-radius: 8px;
+      border: 1px solid var(--line);
+      border-radius: var(--r-sm);
       padding: 10px;
-      min-height: 62px;
+      min-width: 0;
     }
-    .mockup-card small { display: block; color: var(--uo-suave); font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; }
-    .mockup-card b { display: block; margin-top: 6px; font-size: .95rem; }
-    .mockup-card .barra {
-      height: 4px; border-radius: 4px; margin-top: 8px;
-      background: linear-gradient(90deg, var(--uo-azul-2), rgba(14,165,233,.15));
+    .sc small {
+      display: block;
+      font-family: var(--mono);
+      color: var(--mut);
+      font-size: .6rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .mockup-card .barra.verde { background: linear-gradient(90deg, var(--uo-ok), rgba(34,197,94,.15)); }
-    .mockup-card .barra.aviso { background: linear-gradient(90deg, var(--uo-aviso), rgba(245,158,11,.15)); }
-    .mockup-card .barra.erro  { background: linear-gradient(90deg, var(--uo-erro), rgba(239,68,68,.15)); }
+    .sc b { display: block; margin-top: 4px; font-size: .95rem; }
+    .sc .bar {
+      height: 3px; border-radius: 3px; margin-top: 8px;
+      background: linear-gradient(90deg, var(--cy), rgba(76,201,224,.15));
+    }
+    .sc .bar.gr { background: linear-gradient(90deg, var(--gr), rgba(61,220,132,.15)); }
+    .sc .bar.am { background: linear-gradient(90deg, var(--am), rgba(245,166,35,.15)); }
+    .sc .bar.rd { background: linear-gradient(90deg, var(--rd), rgba(255,90,95,.15)); }
 
-    /* ===== Responsivo ===== */
-    @media (max-width: 980px) {
-      .login-shell { grid-template-columns: 1fr; }
-      .login-painel { border-right: 0; border-bottom: 1px solid var(--uo-linha); }
-      .login-vitrine { padding: 48px 28px; }
-      .vitrine-modulos { grid-template-columns: repeat(2, 1fr); }
+    /* ============================================================
+       ANIMAÇÕES COMPARTILHADAS
+       ============================================================ */
+    @keyframes pulso {
+      0%   { box-shadow: 0 0 0 0 rgba(61,220,132,.6); }
+      70%  { box-shadow: 0 0 0 10px rgba(61,220,132,0); }
+      100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); }
     }
-    @media (max-width: 420px) {
-      .login-acoes { grid-template-columns: 1fr; }
-      .vitrine-modulos { grid-template-columns: 1fr; }
-      .login-painel { padding: 32px 22px; }
+
+    /* ============================================================
+       RESPONSIVO
+       ============================================================ */
+    @media (max-width: 1080px) {
+      .login-shell { grid-template-columns: minmax(380px, 480px) 1fr; }
+      .vitrine { margin-left: 0; }
+    }
+
+    @media (max-width: 900px) {
+      .login-shell { grid-template-columns: 1fr; }
+      .login-painel {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 40px clamp(20px, 5vw, 32px);
+        min-height: 100dvh;
+        justify-content: flex-start;
+        padding-top: 32px;
+      }
+      .login-vitrine {
+        padding: 48px clamp(20px, 5vw, 32px);
+        order: -1;
+      }
+      .vitrine__stats { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    /* ---------- Telefones ---------- */
+    @media (max-width: 640px) {
+      .login-vitrine {
+        padding: 28px 20px 24px;
+        justify-content: flex-start;
+      }
+      .vitrine__eyebrow {
+        font-size: .62rem;
+        padding: 5px 10px;
+        margin-bottom: 14px;
+      }
+      .vitrine h2 {
+        font-size: clamp(1.35rem, 6vw, 1.6rem);
+        margin-bottom: 10px;
+      }
+      .vitrine p.lead {
+        font-size: .9rem;
+        line-height: 1.55;
+        margin-bottom: 0;
+      }
+      /* Esconde stats e mockup no celular — o form é o foco */
+      .vitrine__stats,
+      .sistema-card { display: none; }
+
+      .login-painel {
+        padding: 28px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+        justify-content: flex-start;
+        min-height: auto;
+      }
+      .marca { margin-bottom: 24px; }
+      .login-head { margin-bottom: 24px; }
+      .login-head__eyebrow { margin-bottom: 8px; }
+      .login-head h1 { font-size: 1.5rem; }
+      .login-head p { font-size: .88rem; }
+      .login-foot { margin-top: 22px; padding-top: 16px; }
+    }
+
+    @media (max-width: 520px) {
+      .login-linha {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .sistema-card__grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ---------- Telas muito pequenas ---------- */
+    @media (max-width: 380px) {
+      .login-painel { padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+      .login-vitrine { padding: 22px 16px 20px; }
+      .marca__logo { width: 40px; height: 40px; }
+      .marca__txt strong { font-size: .92rem; }
+      .btn { font-size: .88rem; padding: 12px 16px; }
+      .campo input { font-size: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
     }
   </style>
 </head>
@@ -350,133 +714,180 @@
        COLUNA ESQUERDA — FORMULÁRIO
        ===================================================== -->
   <aside class="login-painel">
-{% load static %}
-<input type="hidden" name="next" value="{{ request.GET.next|default:'' }}">
-<a class="login-marca" href="{% url 'login' %}">
-  <img src="{% static 'img/logotipo.png' %}"
-       alt="UMI ORBIT"
-       width="100" height="80"
-       style="border-radius:10px;">
-  <span>
-    <strong>UMI ORBIT</strong>
-    <small>by UMI SAN · v2.4</small>
-  </span>
-</a>
 
-    <h1 class="login-titulo">Acessar o sistema</h1>
-    <p class="login-sub">Entre com suas credenciais para operar o USV <b>L42</b>.</p>
+    <a class="marca" href="{% url 'LDV' %}" aria-label="UMI ORBIT — página inicial">
+      <img class="marca__logo"
+           src="{% static 'img/logotipo.png' %}"
+           alt="UMI ORBIT"
+           width="48" height="48">
+      <span class="marca__txt">
+        <strong>UMI ORBIT</strong>
+        <small>by UMI SAN · v2.4</small>
+      </span>
+    </a>
+
+    <div class="login-head">
+      <span class="login-head__eyebrow">
+        <span></span>
+        
+      </span>
+      <h1>Acessar o sistema</h1>
+      <p>Entre com suas credenciais. Cada sessão é registrada e auditada.</p>
+    </div>
 
     {% if messages %}
-      <div class="mensagens-login">
-        {% for m in messages %}
-          <div class="alerta alerta-{{ m.tags|default:'info' }}">{{ m }}</div>
-        {% endfor %}
-      </div>
+      {% for m in messages %}
+        <div class="alerta alerta-{{ m.tags|default:'info' }}" role="alert">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14h.01"/>
+          </svg>
+          <span>{{ m }}</span>
+        </div>
+      {% endfor %}
     {% endif %}
 
     {% if form.non_field_errors %}
-      <div class="alerta alerta-erro" role="alert">
-        {% for erro in form.non_field_errors %}<div>{{ erro }}</div>{% endfor %}
+      <div class="alerta alerta-erro shake" role="alert">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14h.01"/>
+        </svg>
+        <span>{% for erro in form.non_field_errors %}{{ erro }}{% if not forloop.last %} {% endif %}{% endfor %}</span>
       </div>
     {% endif %}
 
-    <form method="post" autocomplete="on" novalidate>
+    <form method="post" autocomplete="on" novalidate id="login-form">
       {% csrf_token %}
 
+      <!-- Usuário -->
       <div class="campo">
-        <label for="{{ form.username.id_for_label }}">Usuário</label>
         <input
           type="text"
           name="{{ form.username.name }}"
           id="{{ form.username.id_for_label }}"
+          placeholder=" "
           value="{{ form.username.value|default:'' }}"
           autocomplete="username"
           autocapitalize="none"
           spellcheck="false"
           autofocus
           required
-          {% if form.username.errors %}aria-invalid="true"{% endif %}
+          {% if form.username.errors %}aria-invalid="true" aria-describedby="erro-username"{% endif %}
         >
+        <label for="{{ form.username.id_for_label }}">Usuário</label>
         {% if form.username.errors %}
-          <small class="campo-erro">{{ form.username.errors|join:", " }}</small>
+          <small class="campo-erro" id="erro-username">{{ form.username.errors|join:", " }}</small>
         {% endif %}
       </div>
 
-      <div class="campo">
-        <label for="{{ form.password.id_for_label }}">Senha</label>
+      <!-- Senha -->
+      <div class="campo campo--senha">
         <input
           type="password"
           name="{{ form.password.name }}"
           id="{{ form.password.id_for_label }}"
+          placeholder=" "
           autocomplete="current-password"
           required
-          {% if form.password.errors %}aria-invalid="true"{% endif %}
+          {% if form.password.errors %}aria-invalid="true" aria-describedby="erro-password"{% endif %}
         >
+        <label for="{{ form.password.id_for_label }}">Senha</label>
+        <button type="button"
+                class="toggle-senha"
+                id="toggle-senha"
+                aria-label="Mostrar senha"
+                aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
         {% if form.password.errors %}
-          <small class="campo-erro">{{ form.password.errors|join:", " }}</small>
+          <small class="campo-erro" id="erro-password">{{ form.password.errors|join:", " }}</small>
         {% endif %}
       </div>
 
-      <input type="hidden" name="next" value="{{ next|default:'' }}">
-
-      <div class="login-acoes">
-        <button class="btn btn-primario" type="submit">Entrar →</button>
-        <a class="btn btn-secundario" href="{% url 'cadastro' %}">Criar conta</a>
+      <!-- Lembrar / esqueci -->
+      <div class="login-linha">
+        <label class="check">
+          <input type="checkbox" name="remember" value="1" {% if request.POST.remember %}checked{% endif %}>
+          <span class="check__box" aria-hidden="true">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2.5 6.5 5 9l4.5-5"/>
+            </svg>
+          </span>
+          Manter conectado
+        </label>
+        {% url 'password_reset' as url_reset %}
+        {% if url_reset %}
+          <a href="{{ url_reset }}">Esqueci minha senha</a>
+        {% endif %}
       </div>
+
+      <button class="btn btn--primario" type="submit" id="btn-entrar">
+        <span>Entrar</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14M13 6l6 6-6 6"/>
+        </svg>
+      </button>
+
+      <div class="divisor" aria-hidden="true">ou</div>
+
+      <a class="btn btn--ghost" href="{% url 'cadastro' %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M20 8v6M23 11h-6"/>
+        </svg>
+        Criar conta
+      </a>
     </form>
 
-    {% url 'password_reset' as url_reset %}
-    {% if url_reset %}
-      <p class="login-ajuda"><a href="{{ url_reset }}">Esqueci minha senha</a></p>
-    {% endif %}
+    <div class="login-foot">
+      <span class="login-foot__seg">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        Conexão TLS · sessão auditada · acesso monitorado
+      </span>
+      <span>© UMI SAN · UMI ORBIT v2.4</span>
+    </div>
 
   </aside>
 
   <!-- =====================================================
-       COLUNA DIREITA — VITRINE DO PRODUTO
+       COLUNA DIREITA — VITRINE
        ===================================================== -->
   <section class="login-vitrine" aria-label="Sobre a plataforma">
+    <div class="vitrine">
 
-    <div class="vitrine-conteudo">
-
-      <span class="vitrine-eyebrow">
-        <span class="pulso" aria-hidden="true"></span>
+      <span class="vitrine__eyebrow">
+        <span class="dot" aria-hidden="true"></span>
         Plataforma operacional · USV Polaris L42
       </span>
 
-      <h2 class="vitrine-titulo">
-        Opere o <b>L42</b> com<br>visão total e rastreável.
-      </h2>
+      <h2>Opere o <b>L42</b> com visão total e rastreável.</h2>
 
-      <p class="vitrine-desc">
+      <p class="lead">
         Missões, manutenção, incidentes, checklists e aprovações em um único console.
-        Cada ação registrada, cada recurso rastreável — do planejamento à execução.
+        Cada ação registrada — do planejamento à execução.
       </p>
 
-      <!-- Módulos REAIS do sistema (mesmos do rail) -->
-      <div class="vitrine-modulos">
-        <div class="modulo"><span class="ic">▦</span><strong>Visão geral</strong><small>Dashboard consolidado</small></div>
-        <div class="modulo"><span class="ic">≡</span><strong>Missões</strong><small>Execução e histórico</small></div>
-        <div class="modulo"><span class="ic">▤</span><strong>Planejamento</strong><small>Planos de missão</small></div>
-        <div class="modulo"><span class="ic">▥</span><strong>Demanda</strong><small>Equipamento</small></div>
-        <div class="modulo"><span class="ic">⚙</span><strong>Manutenção</strong><small>Ordens e registros</small></div>
-        <div class="modulo"><span class="ic">☑</span><strong>Incidentes</strong><small>Ocorrências</small></div>
-        <div class="modulo"><span class="ic">☑</span><strong>Checklists</strong><small>Rotinas operacionais</small></div>
-        <div class="modulo"><span class="ic">✓</span><strong>Aprovações</strong><small>Fluxo de diretoria</small></div>
-        <div class="modulo"><span class="ic">♟</span><strong>Equipe</strong><small>Perfis e papéis</small></div>
+      <div class="vitrine__stats" role="list">
+        <div class="vitrine__stat" role="listitem"><b>24/7</b><span>Monitoramento</span></div>
+        <div class="vitrine__stat" role="listitem"><b>100%</b><span>Rastreável</span></div>
+        <div class="vitrine__stat" role="listitem"><b>9</b><span>Módulos</span></div>
       </div>
 
-      <!-- Mockup estilizado do dashboard -->
-      <div class="mockup" aria-hidden="true">
-        <div class="mockup-topo">
+      <div class="sistema-card" aria-hidden="true">
+        <div class="sistema-card__topo">
           <i></i><i></i><i></i>
           <span>UMI ORBIT · VISÃO GERAL</span>
         </div>
-        <div class="mockup-grid">
-          <div class="mockup-card"><small>Missões ativas</small><b>3</b><div class="barra"></div></div>
-          <div class="mockup-card"><small>Checklists</small><b>12</b><div class="barra verde"></div></div>
-          <div class="mockup-card"><small>Incidentes</small><b>1</b><div class="barra aviso"></div></div>
-          <div class="mockup-card"><small>Aprovações</small><b>4</b><div class="barra erro"></div></div>
+        <div class="sistema-card__grid">
+          <div class="sc"><small>Missões</small><b>3</b><div class="bar"></div></div>
+          <div class="sc"><small>Checklists</small><b>12</b><div class="bar gr"></div></div>
+          <div class="sc"><small>Incidentes</small><b>1</b><div class="bar am"></div></div>
+          <div class="sc"><small>Aprovações</small><b>4</b><div class="bar rd"></div></div>
         </div>
       </div>
 
@@ -485,5 +896,41 @@
 
 </div>
 
+<script>
+(function(){
+  /* ===== Toggle de senha ===== */
+  const inputSenha = document.getElementById('{{ form.password.id_for_label }}');
+  const toggle     = document.getElementById('toggle-senha');
+  if (inputSenha && toggle) {
+    toggle.addEventListener('click', () => {
+      const mostrar = inputSenha.type === 'password';
+      inputSenha.type = mostrar ? 'text' : 'password';
+      toggle.setAttribute('aria-pressed', String(mostrar));
+      toggle.setAttribute('aria-label', mostrar ? 'Ocultar senha' : 'Mostrar senha');
+      inputSenha.focus();
+    });
+  }
+
+  /* ===== Loading state no submit ===== */
+  const form = document.getElementById('login-form');
+  const btn  = document.getElementById('btn-entrar');
+  if (form && btn) {
+    form.addEventListener('submit', () => {
+      if (form.checkValidity()) {
+        btn.dataset.loading = 'true';
+        btn.setAttribute('aria-busy', 'true');
+      }
+    });
+  }
+
+  /* ===== Shake se houver erro no primeiro campo inválido ===== */
+  const invalido = document.querySelector('.campo input[aria-invalid="true"]');
+  if (invalido) {
+    const campo = invalido.closest('.campo');
+    campo.classList.add('shake');
+    setTimeout(() => campo.classList.remove('shake'), 500);
+  }
+})();
+</script>
 </body>
 </html>

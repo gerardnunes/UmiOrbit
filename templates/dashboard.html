@@ -94,32 +94,19 @@
 <div class="console-grid">
 
   <!-- =========================================================
-       CONSOLE · BARCO COM MAR NO FUNDO DO CARD
+       CONSOLE · BARCO NAVEGANDO
        ========================================================= -->
   <section class="console-barco">
-    <div class="barco-moldura {{ estado }}">
+    <div class="nav-mar {{ estado }}">
+      <canvas id="nav-mar-canvas" aria-hidden="true"></canvas>
 
-      <!-- Fundo: mar animado ocupando todo o card -->
-      <div class="barco-cena" id="barco-cena">
-        <canvas id="mar-barco" aria-hidden="true"></canvas>
-      </div>
-
-      <!-- Barco (menor) flutuando sobre o mar; marcadores entram aqui -->
-      <div class="barco-flutuante">
-        <div id="barco-img-wrap">
-          <img src="{% static 'img/barco-l42.png' %}" alt="USV" class="barco-img">
+      <div class="nav-barco">
+        <div id="nav-barco-wrap">
+          <img src="{% static 'img/barco-l42.png' %}" alt="USV" class="nav-barco-img">
         </div>
       </div>
 
-      <div class="barco-legenda">
-        <span class="leg"><span class="dot ok"></span>Starlink</span>
-        <span class="leg"><span class="dot ok"></span>VPN</span>
-        <span class="leg"><span class="dot ok"></span>N2N</span>
-        <span class="leg"><span class="dot atencao"></span>Bateria {{ bateria_pct }}%</span>
-        <span class="leg-sep"></span>
-        <span class="leg-hora">atualizado {{ agora|date:"H:i" }}</span>
-      </div>
-
+      <canvas id="nav-mar-frente" aria-hidden="true"></canvas>
     </div>
   </section>
 
@@ -410,80 +397,53 @@
 }
 .console-grid > .console-barco { grid-column: 1 / -1; }
 
-/* ---- Console do barco: mar no fundo do card, barco menor ---- */
+/* ---- Console do barco ---- */
 .console-barco { margin: 0; }
-.barco-moldura {
+.nav-mar {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  height: 240px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.08);
-  background: linear-gradient(180deg, #06101c 0%, #0a1d33 50%, #0b2b47 100%);
-  box-shadow: inset 0 0 60px rgba(56,189,248,.06);
+  height: 260px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.06);
+  background: #0d1b2a;
 }
-.barco-cena {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-#mar-barco {
+#nav-mar-canvas, #nav-mar-frente {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
 }
+#nav-mar-frente { z-index: 3; pointer-events: none; }
 
-/* Remove qualquer overlay/linha (scanlines, grades, reflexos) vindo do CSS global */
+/* Remove overlays vindos do CSS global */
 .console-barco::before, .console-barco::after,
-.barco-moldura::before, .barco-moldura::after,
-.barco-cena::before, .barco-cena::after,
-.barco-flutuante::before, .barco-flutuante::after {
+.nav-mar::before, .nav-mar::after {
   content: none !important;
   display: none !important;
-  background: none !important;
 }
 
-.barco-flutuante {
+/* O barco é posicionado em px pelo JS (translate); começa fora da caixa */
+.nav-barco {
   position: absolute;
-  left: 50%;
-  bottom: 27%;
-  width: clamp(150px, 22%, 240px);
-  transform: translateX(-50%);
-  transform-origin: 50% 78%;
+  left: 0;
+  bottom: 26%;
+  width: clamp(170px, 20%, 250px);
+  transform: translate(-150%, 0);
+  transform-origin: 50% 85%;
   will-change: transform;
+  animation: none !important;
+  transition: none !important;
   z-index: 2;
 }
-.barco-img {
+.nav-barco-wrap, .nav-barco-img { animation: none !important; transition: none !important; }
+.nav-barco-img {
   display: block;
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 10px 14px rgba(0,0,0,.55));
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,.35));
 }
-
-.barco-legenda {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 18px 14px 8px;
-  font-size: .72rem;
-  color: #cfe3f5;
-  background: linear-gradient(180deg, rgba(5,10,18,0) 0%, rgba(5,10,18,.78) 100%);
-}
-.barco-legenda .leg { display: inline-flex; align-items: center; gap: 6px; }
-.barco-legenda .leg-sep { flex: 1; }
-.barco-legenda .leg-hora { color: var(--texto-suave, #aab); }
-.barco-legenda .dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  display: inline-block; background: #64748b;
-}
-.barco-legenda .dot.ok      { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,.7); }
-.barco-legenda .dot.atencao { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,.7); }
 
 /* ---- KPIs clicáveis ---- */
 .kpis {
@@ -689,27 +649,46 @@
 .diario-conteudo small { display: block; font-size: .75rem; color: var(--texto-suave, #aab); margin-top: 2px; }
 
 /* ---- Marcadores no barco ---- */
-#barco-img-wrap { position: relative; width: 100%; }
-#barco-img-wrap > img { display: block; width: 100%; height: auto; }
-.ponto-alerta { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; background: #f59e0b; border: 2px solid #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 0 rgba(245,158,11,.7); animation: pulso 2s infinite; z-index: 5; }
-.ponto-alerta.bloqueante { background: #ef4444; animation: pulso-bloq 1.4s infinite; }
-.ponto-alerta:hover { z-index: 20; }
-.ponto-incidente { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border: 2px solid #fff; border-radius: 50%; cursor: pointer; z-index: 6; animation: pulso-inc 2s infinite; }
-.ponto-incidente.sev-critico { background: #ef4444; }
-.ponto-incidente.sev-alto    { background: #f59e0b; }
-.ponto-incidente.sev-medio   { background: #eab308; }
-.ponto-incidente.sev-baixo   { background: #22c55e; }
-.ponto-incidente.bloqueante  { animation: pulso-bloq 1.2s infinite; }
-.ponto-incidente:hover { z-index: 20; }
+#nav-barco-wrap { position: relative; width: 100%; }
+#nav-barco-wrap > img { display: block; width: 100%; height: auto; }
 
-@keyframes pulso { 0% { box-shadow: 0 0 0 0 rgba(245,158,11,.6); } 70% { box-shadow: 0 0 0 12px rgba(245,158,11,0); } 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } }
-@keyframes pulso-bloq { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.7); } 70% { box-shadow: 0 0 0 14px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
-@keyframes pulso-inc { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.5); } 70% { box-shadow: 0 0 0 10px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+.ponto-alerta, .ponto-incidente {
+  position: absolute;
+  width: 10px; height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1.5px solid rgba(255,255,255,.9);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 5;
+}
+.ponto-alerta            { background: #d99a2b; }
+.ponto-alerta.bloqueante { background: #d64545; animation: pulso-bloq 2.4s ease-out infinite; }
 
-.ponto-tooltip { position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%) scale(.9); background: #0f1720; border: 1px solid rgba(255,255,255,.15); color: #e6edf3; padding: 6px 10px; border-radius: 8px; font-size: .75rem; line-height: 1.35; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; box-shadow: 0 8px 24px rgba(0,0,0,.6); z-index: 30; }
+.ponto-incidente.sev-critico { background: #d64545; }
+.ponto-incidente.sev-alto    { background: #d99a2b; }
+.ponto-incidente.sev-medio   { background: #c9b037; }
+.ponto-incidente.sev-baixo   { background: #3fa564; }
+.ponto-incidente.bloqueante  { animation: pulso-bloq 2.4s ease-out infinite; }
+.ponto-alerta:hover, .ponto-incidente:hover { z-index: 20; }
+
+@keyframes pulso-bloq {
+  0%   { box-shadow: 0 0 0 0 rgba(214,69,69,.45); }
+  70%  { box-shadow: 0 0 0 9px rgba(214,69,69,0); }
+  100% { box-shadow: 0 0 0 0 rgba(214,69,69,0); }
+}
+
+.ponto-tooltip {
+  position: absolute; bottom: 150%; left: 50%;
+  transform: translateX(-50%);
+  background: #0f1720; border: 1px solid rgba(255,255,255,.12);
+  color: #e6edf3; padding: 6px 10px; border-radius: 6px;
+  font-size: .75rem; line-height: 1.35; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .15s;
+  box-shadow: 0 6px 18px rgba(0,0,0,.5); z-index: 30;
+}
 .ponto-tooltip small { color: #aab; }
 .ponto-alerta:hover .ponto-tooltip,
-.ponto-incidente:hover .ponto-tooltip { opacity: 1; transform: translateX(-50%) scale(1); }
+.ponto-incidente:hover .ponto-tooltip { opacity: 1; }
 
 
 @media (max-width: 720px) {
@@ -720,8 +699,8 @@
   .incidente-card-bloq { align-self: flex-start; }
   .banner-vazio { flex-direction: column; align-items: flex-start; }
   .banner-vazio-btn { width: 100%; text-align: center; }
-  .barco-moldura { height: 200px; }
-  .barco-flutuante { width: clamp(120px, 38%, 180px); bottom: 27%; }
+  .nav-mar { height: 210px; }
+  .nav-barco { width: clamp(130px, 40%, 200px); bottom: 26%; }
   .console-grid { grid-template-columns: 1fr; }
 }
 </style>
@@ -745,7 +724,7 @@ const problemasAtuais  = {{ problemas_barco|default:"[]"|safe }};
 const incidentesAtuais = {{ incidentes_mapa|default:"[]"|safe }};
 
 document.addEventListener('DOMContentLoaded', () => {
-  const wrap = document.getElementById('barco-img-wrap');
+  const wrap = document.getElementById('nav-barco-wrap');
   if (!wrap) return;
 
   problemasAtuais.forEach(p => {
@@ -787,130 +766,431 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
   "use strict";
 
-  var cv    = document.getElementById("mar-barco");
-  var cena  = document.getElementById("barco-cena");
-  var barco = document.querySelector(".barco-flutuante");
-  if (!cv) return;
+  var cv    = document.getElementById("nav-mar-canvas");
+  var cf    = document.getElementById("nav-mar-frente");
+  var box   = document.querySelector(".nav-mar");
+  var barco = document.querySelector(".nav-barco");
+  if (!cv || !cf) return;
 
   var cx = cv.getContext("2d");
-  var W = 0, H = 0, T = 0, last = 0, vis = true, raf = 0, fov = 600;
+  var cg = cf.getContext("2d");
+  var W = 0, H = 0, T = 0, last = 0, vis = true, raf = 0;
   var heave = 0, pitch = 0;
+  var bx = null, espera = 0;
+  var VIAGEM = 30, PAUSA = 1.2, SINK = .27;
   var reduz = matchMedia("(prefers-reduced-motion:reduce)").matches;
 
-  /* Malha 3D (mesmo estilo futurista) */
-  var C = 46, R = 30;
-  var CT = .94, ST = .34;       // inclinação da câmera
-  var AMP = .42;                // altura das ondas
-  var VEL = 1;                  // velocidade do avanço (1 = padrão)
+  /* ---- Estado da batimetria ---- */
+  var seabedScroll = 0;      /* deslocamento do relevo do fundo */
+  var sonarPhase   = 0;      /* 0..1 progresso do ping atual */
+  var sonarTimer   = 1.5;    /* segundos até próximo ping */
 
-  /* Superfície: as cristas correm da proa (esq.) para a popa (dir.) = barco avançando */
-  function onda(x, z, t){
-    return AMP * (
-      Math.sin(x * 1.1 - t * 1.7) +
-      Math.cos(z * .9  + t * .9)  +
-      Math.sin((x + z) * .6 - t * 1.2)
-    ) * .4;
+  /* ---- Água ---- */
+  var CAMADAS = [
+    { b: .58, a: 1.2, k: .034, v: .30, c1: "#27496a", c2: "#183654" },
+    { b: .63, a: 1.8, k: .027, v: .42, c1: "#21415f", c2: "#142f4a" },
+    { b: .68, a: 2.6, k: .021, v: .55, c1: "#1b3855", c2: "#10273f" },
+    { b: .72, a: 3.4, k: .017, v: .68, c1: "#16304b", c2: "#0c2036" }
+  ];
+  var REF = { b: .75, a: 10, k: .0145, v: .82, c1: "#142d47", c2: "#081a2c" };
+
+  /* ---- Brilhos na superfície ---- */
+  var BRILHOS = [];
+  for (var n = 0; n < 70; n++)
+    BRILHOS.push({ u: Math.random(), v: Math.random(), p: Math.random()*6.28, s: 1.2+Math.random()*2.2 });
+
+  /* ---- Bolhas subindo do fundo ---- */
+  var BOLHAS = [];
+  function criarBolha(){
+    return {
+      x: Math.random()*W, y: H - 5,
+      r: 0.6 + Math.random()*1.4,
+      v: 10 + Math.random()*18,
+      w: Math.random()*6.28,
+      a: 0.15 + Math.random()*0.25
+    };
+  }
+  for (var n = 0; n < 12; n++){
+    var b = criarBolha(); b.y = H - Math.random()*(H*0.35);
+    BOLHAS.push(b);
   }
 
-  /* Projeção em perspectiva do ponto (x, z) com altura y */
-  function proj(x, z, y, yw){
-    var sy = Math.sin(yw), cy = Math.cos(yw);
-    var x2 = x * cy - z * sy;
-    var z2 = x * sy + z * cy;
-    var y3 = y * CT + z2 * ST;
-    var z3 = z2 * CT - y * ST;
-    var s  = fov / (z3 + 8.2);
-    return [W / 2 + x2 * s, H * .70 - y3 * s, z3];
+  /* ---- Splash particles ---- */
+  var SPLASHES = [], splashAccum = 0, MAX_SPLASHES = 120, SPLASH_RATE = 50;
+
+  /* ---- Fórmulas de onda (mais harmônicos = mais chop/splash) ---- */
+  function onda(c, x, t){
+    return H*c.b
+      + c.a * Math.sin(x*c.k - t*c.v*2)
+      + c.a * .55 * Math.sin(x*c.k*2.1 - t*c.v*3.1 + 1.3)
+      + c.a * .40 * Math.sin(x*c.k*4.3 - t*c.v*4.2 + .4)
+      + c.a * .10 * Math.sin(x*c.k*7.1 - t*c.v*5.8 + 2.1);
+  }
+
+  /* ---- Relevo do fundo do mar (rola com o barco) ---- */
+  function seabedY(x){
+    var xr = x - seabedScroll;
+    return H - 9
+      - Math.sin(xr * 0.011) * 7
+      - Math.sin(xr * 0.027) * 3.5
+      - Math.sin(xr * 0.061) * 1.8;
   }
 
   function size(){
     var dpr = Math.min(devicePixelRatio || 1, 1.5);
-    W = cv.clientWidth;
-    H = cv.clientHeight;
+    W = cv.clientWidth; H = cv.clientHeight;
     if (!W || !H) return;
-    fov = Math.min(Math.max(W, 400), 1000);
-    cv.width  = W * dpr;
-    cv.height = H * dpr;
-    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    [cv, cf].forEach(function(c){ c.width = W*dpr; c.height = H*dpr; });
+    cx.setTransform(dpr,0,0,dpr,0,0);
+    cg.setTransform(dpr,0,0,dpr,0,0);
     if (reduz) quadro(0);
   }
 
-  function mar(yw){
-    var P = [], i, j;
-    for (j = 0; j < R; j++){
-      P[j] = [];
-      for (i = 0; i < C; i++){
-        var x = (i - C / 2) * .55;
-        var z = (j - R / 2) * .55;
-        P[j][i] = proj(x, z, onda(x, z, T), yw);
-      }
-    }
+  function ceu(){
+    var g = cx.createLinearGradient(0, 0, 0, H*.60);
+    g.addColorStop(0, "#08111d");
+    g.addColorStop(.55, "#162b43");
+    g.addColorStop(1, "#3d6080");
+    cx.fillStyle = g;
+    cx.fillRect(0, 0, W, H);
+    var h = cx.createLinearGradient(0, H*.50, 0, H*.60);
+    h.addColorStop(0, "rgba(130,170,200,0)");
+    h.addColorStop(1, "rgba(130,170,200,.20)");
+    cx.fillStyle = h;
+    cx.fillRect(0, H*.50, W, H*.10);
+  }
 
+  function camada(g, c, alfaCrista){
+    var pts = [], x;
+    for (x = 0; x <= W+5; x += 5) pts.push(onda(c, x, T));
+    g.beginPath();
+    g.moveTo(0, H);
+    for (var i = 0; i < pts.length; i++) g.lineTo(i*5, pts[i]);
+    g.lineTo(W, H); g.closePath();
+    var gr = g.createLinearGradient(0, H*c.b - 8, 0, H);
+    gr.addColorStop(0, c.c1);
+    gr.addColorStop(1, c.c2);
+    g.fillStyle = gr;
+    g.fill();
+    g.beginPath();
+    for (i = 0; i < pts.length; i++){
+      if (i) g.lineTo(i*5, pts[i]); else g.moveTo(0, pts[0]);
+    }
+    g.strokeStyle = "rgba(170,205,235," + alfaCrista + ")";
+    g.lineWidth = 1;
+    g.stroke();
+  }
+
+  function brilhos(){
     cx.lineWidth = 1;
-
-    for (j = 0; j < R; j++){
-      var a = Math.max(.05, Math.min(.75, .85 - (j / R) * .8));
-      cx.strokeStyle = "rgba(56,189,248," + a + ")";
-      cx.beginPath();
-      for (i = 0; i < C; i++){
-        if (i) cx.lineTo(P[j][i][0], P[j][i][1]);
-        else   cx.moveTo(P[j][i][0], P[j][i][1]);
-      }
-      cx.stroke();
+    for (var i = 0; i < BRILHOS.length; i++){
+      var b = BRILHOS[i];
+      var a = Math.pow(Math.max(0, Math.sin(T*b.s + b.p)), 8) * .55;
+      if (a < .04) continue;
+      var x = (b.u*W + T*(10 + b.v*30)) % W;
+      var y = H*(.585 + b.v*.15);
+      var w = 4 + b.v*16;
+      cx.strokeStyle = "rgba(205,228,245," + a.toFixed(3) + ")";
+      cx.beginPath(); cx.moveTo(x - w/2, y); cx.lineTo(x + w/2, y); cx.stroke();
     }
-    for (i = 0; i < C; i++){
-      cx.strokeStyle = "rgba(125,211,252,.22)";
+  }
+
+  /* ---- Desenha o relevo do fundo ---- */
+  function desenharSeabed(){
+    var step = 4;
+    cx.beginPath();
+    cx.moveTo(0, H);
+    for (var x = 0; x <= W + step; x += step) cx.lineTo(x, seabedY(x));
+    cx.lineTo(W, H); cx.closePath();
+    var g = cx.createLinearGradient(0, H*0.88, 0, H);
+    g.addColorStop(0, "rgba(50, 85, 115, 0.55)");
+    g.addColorStop(1, "rgba(18, 32, 48, 0.90)");
+    cx.fillStyle = g;
+    cx.fill();
+
+    /* Borda superior iluminada */
+    cx.beginPath();
+    for (var x = 0; x <= W + step; x += step){
+      var y = seabedY(x);
+      if (x === 0) cx.moveTo(x, y); else cx.lineTo(x, y);
+    }
+    cx.strokeStyle = "rgba(140, 200, 235, 0.55)";
+    cx.lineWidth = 1.2;
+    cx.stroke();
+
+    /* Curvas de nível abaixo */
+    cx.strokeStyle = "rgba(90, 150, 195, 0.22)";
+    cx.lineWidth = 0.7;
+    for (var k = 1; k <= 3; k++){
       cx.beginPath();
-      for (j = 0; j < R; j++){
-        if (j) cx.lineTo(P[j][i][0], P[j][i][1]);
-        else   cx.moveTo(P[j][i][0], P[j][i][1]);
+      for (var x = 0; x <= W + step; x += step){
+        var y = seabedY(x) + k * 4.5;
+        if (x === 0) cx.moveTo(x, y); else cx.lineTo(x, y);
       }
       cx.stroke();
     }
   }
 
-  /* O barco lê a MESMA superfície da malha, na linha onde ele está (z = 0) */
-  function moverBarco(dt, yw){
-    if (!barco) return;
-    var L  = barco.offsetWidth || 200;
-    var s0 = fov / 8.2;                       // escala de pixels na linha do barco
-    var d  = (L * .38) / s0;                  // meia-distância proa/popa em unidades do mundo
+  /* ---- Feixe de sonar (cone + ping animado) ---- */
+  function desenharSonar(b){
+    if (!b || b.x < -30 || b.x > W + 30) return;
+    var yTop = onda(REF, b.x, T) + 3;
+    var yBot = seabedY(b.x);
+    if (yBot <= yTop + 8) return;
 
-    var pb = proj(-d, 0, onda(-d, 0, T), yw); // proa
-    var pc = proj( 0, 0, onda( 0, 0, T), yw); // centro
-    var ps = proj( d, 0, onda( d, 0, T), yw); // popa
-    var repouso = proj(0, 0, 0, yw)[1];
+    /* Cone do feixe */
+    var grad = cx.createLinearGradient(0, yTop, 0, yBot);
+    grad.addColorStop(0,   "rgba(100, 200, 255, 0.40)");
+    grad.addColorStop(0.5, "rgba(100, 200, 255, 0.15)");
+    grad.addColorStop(1,   "rgba(100, 200, 255, 0.03)");
+    var hwT = 3, hwB = 14 + (yBot - yTop) * 0.15;
+    cx.beginPath();
+    cx.moveTo(b.x - hwT, yTop);
+    cx.lineTo(b.x + hwT, yTop);
+    cx.lineTo(b.x + hwB, yBot);
+    cx.lineTo(b.x - hwB, yBot);
+    cx.closePath();
+    cx.fillStyle = grad;
+    cx.fill();
 
-    var alvoH = pc[1] - repouso;              // sobe/desce junto com a onda
-    var alvoP = -Math.atan2(ps[1] - pb[1], ps[0] - pb[0]) * 180 / Math.PI;
-    alvoP += Math.sin(T * 1.3) * .6;          // leve balanço lateral
-    alvoP = Math.max(-12, Math.min(12, alvoP));
+    /* Ping ativo descendo */
+    if (sonarPhase > 0 && sonarPhase < 1){
+      var pingY = yTop + (yBot - yTop) * sonarPhase;
+      var pingW = hwT + (hwB - hwT) * sonarPhase;
+      var alpha = 0.85 * Math.sin(sonarPhase * Math.PI);
 
-    var k = 1 - Math.exp(-dt * 9);            // suavização independente do fps
+      cx.shadowBlur = 6;
+      cx.shadowColor = "rgba(150, 220, 255, " + alpha + ")";
+      cx.beginPath();
+      cx.moveTo(b.x - pingW, pingY);
+      cx.lineTo(b.x + pingW, pingY);
+      cx.strokeStyle = "rgba(180, 230, 255, " + alpha + ")";
+      cx.lineWidth = 2;
+      cx.stroke();
+      cx.shadowBlur = 0;
+
+      /* Flash de impacto no fundo */
+      if (sonarPhase > 0.88){
+        var flash = (sonarPhase - 0.88) / 0.12;
+        var hitA = Math.sin(flash * Math.PI) * 0.7;
+        cx.beginPath();
+        cx.arc(b.x, yBot, 3 + flash * 5, 0, Math.PI * 2);
+        cx.fillStyle = "rgba(200, 240, 255, " + hitA + ")";
+        cx.fill();
+      }
+    }
+  }
+
+  /* ---- Leitura de profundidade (HUD) ---- */
+  function desenharReadout(b){
+    if (!b) return;
+    var yTop = onda(REF, b.x, T) + 3;
+    var yBot = seabedY(b.x);
+    var depthM = ((yBot - yTop) / H * 30 + 1).toFixed(1);
+    var x = W - 62, y = H * 0.66;
+
+    cx.font = "500 8px monospace";
+    cx.textAlign = "left";
+    cx.fillStyle = "rgba(150, 220, 255, 0.55)";
+    cx.fillText("SONAR DEPTH", x, y);
+
+    cx.font = "700 13px monospace";
+    cx.fillStyle = "rgba(160, 225, 255, 0.92)";
+    cx.fillText(depthM + " m", x, y + 15);
+  }
+
+  /* ---- Bolhas ---- */
+  function bolhas(dt){
+    for (var i = 0; i < BOLHAS.length; i++){
+      var b = BOLHAS[i];
+      b.y -= b.v * dt;
+      b.w += dt * 2;
+      b.x += Math.sin(b.w) * 8 * dt;
+      if (b.y < H * 0.62){
+        var nb = criarBolha();
+        b.x = nb.x; b.y = H + 5; b.r = nb.r; b.v = nb.v; b.w = nb.w; b.a = nb.a;
+      }
+      var fade = Math.min(1, (b.y - H*0.62) / (H*0.30));
+      cx.beginPath();
+      cx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      cx.fillStyle = "rgba(180, 220, 255, " + (b.a * fade).toFixed(3) + ")";
+      cx.fill();
+      cx.beginPath();
+      cx.arc(b.x - b.r*0.3, b.y - b.r*0.3, b.r*0.4, 0, Math.PI*2);
+      cx.fillStyle = "rgba(230, 245, 255, " + (b.a * fade * 1.3).toFixed(3) + ")";
+      cx.fill();
+    }
+  }
+
+  function moverBarco(dt){
+    var L = barco ? barco.offsetWidth : 200;
+    var Hb = barco ? barco.offsetHeight : 80;
+    if (bx === null) bx = W * .65;
+    if (reduz){
+      bx = W / 2;
+    } else if (espera > 0){
+      espera -= dt;
+      if (espera <= 0) bx = W + L * .7;
+    } else {
+      bx -= ((W + L * 1.4) / VIAGEM) * dt;
+      if (bx < -L * .7) espera = PAUSA;
+    }
+    var d = L * .38;
+    var yb = onda(REF, bx - d, T);
+    var yc = onda(REF, bx, T);
+    var ys = onda(REF, bx + d, T);
+    var alvoH = (yc - H*REF.b) * .8 + Hb * SINK;
+    var alvoP = Math.atan2(ys - yb, 2*d) * 180/Math.PI * .8;
+    alvoP = Math.max(-3.5, Math.min(3.5, alvoP));
+    var k = 1 - Math.exp(-dt * 7);
     heave += (alvoH - heave) * k;
     pitch += (alvoP - pitch) * k;
+    if (barco){
+      barco.style.setProperty("transform",
+        "translate(" + (bx - L/2).toFixed(1) + "px," + heave.toFixed(2) + "px) rotate(" + pitch.toFixed(2) + "deg)",
+        "important");
+    }
+    return { x: bx, y: yc, L: L };
+  }
 
-    barco.style.transform =
-      "translate(-50%," + heave.toFixed(2) + "px) rotate(" + pitch.toFixed(2) + "deg)";
-    return pc;
+  /* ---- Emissão de splash (proa, lateral, popa) ---- */
+  function emitirSplash(b, dt){
+    if (!b || b.x < -b.L || b.x > W + b.L) return;
+    splashAccum += dt * SPLASH_RATE;
+    var toEmit = Math.floor(splashAccum);
+    splashAccum -= toEmit;
+
+    for (var i = 0; i < toEmit; i++){
+      if (SPLASHES.length >= MAX_SPLASHES) break;
+      var r = Math.random(), x, vxBase, vyBase;
+      if (r < 0.6){
+        x = b.x - b.L * 0.35 + (Math.random() - 0.5) * 8;
+        vxBase = -40 - Math.random() * 50;
+        vyBase = -50 - Math.random() * 60;
+      } else if (r < 0.85){
+        x = b.x + (Math.random() - 0.5) * b.L * 0.5;
+        vxBase = (Math.random() - 0.5) * 60;
+        vyBase = -40 - Math.random() * 50;
+      } else {
+        x = b.x + b.L * 0.4 + (Math.random() - 0.5) * 5;
+        vxBase = 15 + Math.random() * 20;
+        vyBase = -30 - Math.random() * 40;
+      }
+      SPLASHES.push({
+        x: x, y: onda(REF, x, T) + 2,
+        vx: vxBase + (Math.random() - 0.5) * 20,
+        vy: vyBase + (Math.random() - 0.5) * 15,
+        r: 0.7 + Math.random() * 1.6,
+        vida: 1.0,
+        g: 130 + Math.random() * 70,
+        brilho: Math.random() < 0.35
+      });
+    }
+  }
+
+  function atualizarSplashes(dt, g){
+    for (var i = SPLASHES.length - 1; i >= 0; i--){
+      var s = SPLASHES[i];
+      s.vy += s.g * dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vida -= dt * 1.4;
+      if (s.vida <= 0 || s.y > H){
+        SPLASHES.splice(i, 1);
+        continue;
+      }
+      var a = Math.min(1, s.vida * 1.2);
+      g.beginPath();
+      g.arc(s.x, s.y, s.r * Math.min(1, s.vida * 1.5), 0, Math.PI * 2);
+      g.fillStyle = s.brilho
+        ? "rgba(220, 245, 255, " + a.toFixed(3) + ")"
+        : "rgba(180, 220, 245, " + (a * 0.8).toFixed(3) + ")";
+      g.fill();
+    }
+  }
+
+  /* ---- Foreground: água da frente + espuma + splash + esteira ---- */
+  function frente(b, dt){
+    cg.clearRect(0, 0, W, H);
+    camada(cg, REF, .38);
+    if (b.x < -b.L || b.x > W + b.L * 2.2){
+      atualizarSplashes(dt, cg);
+      return;
+    }
+    var x1 = b.x - b.L * .36, x2 = b.x + b.L * .46, x;
+
+    /* Espuma em 3 camadas na linha d'água */
+    for (var layer = 0; layer < 3; layer++){
+      cg.strokeStyle = "rgba(235, 245, 252, " + (0.42 - layer * 0.12) + ")";
+      cg.lineWidth = 2.2 - layer * 0.6;
+      cg.beginPath();
+      for (x = x1; x <= x2; x += 3){
+        var y = onda(REF, x, T)
+              + Math.sin(x * .35 + T * 6 + layer * 2) * (1 + layer * 0.5)
+              + layer * 1.2;
+        if (x === x1) cg.moveTo(x, y); else cg.lineTo(x, y);
+      }
+      cg.stroke();
+    }
+
+    if (!reduz) emitirSplash(b, dt);
+
+    /* Esteira atrás da popa */
+    var e1 = x2, e2 = b.x + b.L * 2.1;
+    var gw = cg.createLinearGradient(e1, 0, e2, 0);
+    gw.addColorStop(0, "rgba(225,238,248,.42)");
+    gw.addColorStop(1, "rgba(225,238,248,0)");
+    cg.strokeStyle = gw;
+    cg.lineWidth = 1.8;
+    cg.beginPath();
+    for (x = e1; x <= e2; x += 5){
+      var y1 = onda(REF, x, T) + 1;
+      if (x === e1) cg.moveTo(x, y1); else cg.lineTo(x, y1);
+    }
+    cg.stroke();
+
+    cg.lineWidth = 1;
+    cg.globalAlpha = .55;
+    cg.beginPath();
+    for (x = e1 + b.L * .1; x <= e2 * .94; x += 5){
+      var y2 = onda(REF, x, T) + 4.5;
+      if (x === e1 + b.L * .1) cg.moveTo(x, y2); else cg.lineTo(x, y2);
+    }
+    cg.stroke();
+    cg.globalAlpha = 1;
+
+    atualizarSplashes(dt, cg);
   }
 
   function quadro(dt){
     if (!W || !H) return;
-    T += dt * VEL;
-    var yw = Math.sin(T * .25) * .10;         // balanço automático suave da câmera
+    T += dt;
+
+    /* Relevo do fundo rola no sentido oposto ao barco */
+    seabedScroll += dt * ((W + 250) / VIAGEM);
+
+    /* Ping do sonar */
+    if (sonarPhase > 0){
+      sonarPhase += dt * 2.5;
+      if (sonarPhase >= 1){ sonarPhase = 0; sonarTimer = 1.0 + Math.random() * 1.5; }
+    } else if (sonarTimer > 0){
+      sonarTimer -= dt;
+      if (sonarTimer <= 0) sonarPhase = 0.001;
+    }
 
     cx.clearRect(0, 0, W, H);
-    mar(yw);
+    ceu();
+    for (var n = 0; n < CAMADAS.length; n++) camada(cx, CAMADAS[n], .10 + n * .05);
+    brilhos();
 
-    var pc = moverBarco(dt, yw);
-    if (pc){                                   // brilho suave sob o casco
-      var g = cx.createRadialGradient(pc[0], pc[1], 4, pc[0], pc[1], Math.max(80, W * .16));
-      g.addColorStop(0, "rgba(56,189,248,.20)");
-      g.addColorStop(1, "rgba(56,189,248,0)");
-      cx.fillStyle = g;
-      cx.fillRect(0, 0, W, H);
-    }
+    var b = moverBarco(dt);
+
+    desenharSeabed();
+    desenharSonar(b);
+    desenharReadout(b);
+    bolhas(dt);
+
+    frente(b, dt);
   }
 
   function loop(now){
@@ -932,14 +1212,13 @@ document.addEventListener('DOMContentLoaded', () => {
     clearTimeout(rzTimer);
     rzTimer = setTimeout(size, 120);
   });
-  if (cena && "ResizeObserver" in window){
+  if (box && "ResizeObserver" in window){
     new ResizeObserver(function(){
       clearTimeout(rzTimer);
       rzTimer = setTimeout(size, 120);
-    }).observe(cena);
+    }).observe(box);
   }
 
-  /* Pausa quando o card sai da tela */
   new IntersectionObserver(function(e){
     var agora = e[0].isIntersecting;
     if (agora && !vis){ vis = true; iniciar(); }

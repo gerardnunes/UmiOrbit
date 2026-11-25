@@ -1,293 +1,730 @@
-{% load static %}<!doctype html>
+
+{% load static %}
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Criar conta · L42</title>
+<meta name="theme-color" content="#0b1220">
+
+<title>Criar conta · COR</title>
+
 <style>
-  :root {
-    --bg: #0f1720;
-    --card: #16202c;
-    --card-2: #1d2a3a;
-    --linha: rgba(255,255,255,.08);
-    --texto: #e6edf3;
-    --suave: #93a4b8;
-    --erro: #f87171;
-    --ok: #4ade80;
-    --primario: #3b82f6;
-    --primario-hover: #2563eb;
-  }
-  * { box-sizing: border-box; }
-  body {
+:root {
+    --bg: #080e19;
+    --surface: #101a2a;
+    --surface-2: #172438;
+    --border: rgba(148,163,184,.16);
+    --text: #f1f5f9;
+    --muted: #94a3b8;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --danger: #f87171;
+    --success: #4ade80;
+    --radius: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
     margin: 0;
     min-height: 100vh;
-    background: var(--bg);
-    color: var(--texto);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background:
+        radial-gradient(ellipse at 50% 0%, rgba(37,99,235,.13), transparent 55%),
+        var(--bg);
+    color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+}
+
+.page {
+    width: 100%;
+    max-width: 570px;
+}
+
+.brand {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.brand-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
     display: grid;
     place-items: center;
-    padding: 32px 16px;
-  }
+    border: 1px solid rgba(59,130,246,.35);
+    border-radius: 14px;
+    background: rgba(59,130,246,.12);
+    color: #60a5fa;
+    font-size: 22px;
+    font-weight: 800;
+}
 
-  .card {
-    width: 100%;
-    max-width: 460px;
-    background: var(--card);
-    border: 1px solid var(--linha);
-    border-radius: 16px;
-    padding: 28px 26px 24px;
-    box-shadow: 0 20px 60px rgba(0,0,0,.45);
-  }
+.brand-name {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .22em;
+    color: #dbeafe;
+}
 
-  .card-topo {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: 6px;
-    margin-bottom: 20px;
-  }
-  .card-topo img {
-    width: 96px;
-    display: block;
-    margin-bottom: 4px;
-  }
-  .card-topo h1 {
-    margin: 0;
-    font-size: 1.35rem;
-    letter-spacing: .06em;
-  }
-  .card-topo p {
-    margin: 0;
-    font-size: .85rem;
-    color: var(--suave);
-    line-height: 1.45;
-  }
-
-  .alerta {
-    padding: 10px 12px;
-    border-radius: 10px;
-    font-size: .85rem;
-    border: 1px solid transparent;
-    margin-bottom: 14px;
-  }
-  .alerta-erro {
-    background: rgba(239,68,68,.12);
-    border-color: rgba(239,68,68,.45);
-    color: var(--erro);
-  }
-  .alerta-erro ul { margin: 0; padding-left: 16px; }
-
-  form { display: grid; gap: 14px; }
-
-  .campo { display: grid; gap: 6px; }
-  .campo label {
-    font-size: .72rem;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--suave);
-  }
-  .campo label b { color: var(--erro); }
-
-  .campo input {
-    padding: 11px 12px;
-    border-radius: 9px;
-    border: 1px solid var(--linha);
-    background: rgba(0,0,0,.28);
-    color: var(--texto);
-    font: inherit;
-    font-size: .92rem;
-    transition: border-color .15s, background .15s;
-  }
-  .campo input:focus {
-    outline: none;
-    border-color: var(--primario);
-    background: rgba(0,0,0,.38);
-  }
-  .campo input[aria-invalid="true"] { border-color: var(--erro); }
-
-  .ajuda {
-    font-size: .72rem;
-    color: var(--suave);
-    line-height: 1.4;
-  }
-  .erro-campo {
-    font-size: .78rem;
-    color: var(--erro);
-  }
-
-  .linha-dupla {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  @media (max-width: 420px) {
-    .linha-dupla { grid-template-columns: 1fr; }
-  }
-
-  .acoes {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+.brand-caption {
+    color: var(--muted);
+    font-size: 12px;
     margin-top: 6px;
-  }
-  @media (max-width: 420px) {
-    .acoes { grid-template-columns: 1fr; }
-  }
+}
 
-  .btn {
-    display: inline-flex;
+.card {
+    background: linear-gradient(145deg, #111d2e, #0e1827);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 34px;
+    box-shadow: 0 25px 80px rgba(0,0,0,.35);
+}
+
+.header {
+    margin-bottom: 26px;
+}
+
+.header h1 {
+    font-size: 26px;
+    letter-spacing: -.7px;
+    margin: 0 0 9px;
+    font-weight: 750;
+}
+
+.header p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 0;
+}
+
+.approval {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 25px;
+    border-radius: 12px;
+    background: rgba(59,130,246,.08);
+    border: 1px solid rgba(59,130,246,.2);
+}
+
+.approval-icon {
+    color: #60a5fa;
+    font-size: 17px;
+}
+
+.approval strong {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 4px;
+    color: #bfdbfe;
+}
+
+.approval span {
+    color: #94a3b8;
+    font-size: 11px;
+    line-height: 1.6;
+    display: block;
+}
+
+.section-title {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 11px 16px;
-    border-radius: 9px;
-    border: 1px solid transparent;
-    font: inherit;
-    font-size: .9rem;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: none;
-    transition: background .15s, transform .1s;
-  }
-  .btn:active { transform: scale(.98); }
-  .btn-primario { background: var(--primario); color: #fff; }
-  .btn-primario:hover { background: var(--primario-hover); }
-  .btn-secundario {
-    background: rgba(255,255,255,.04);
-    border-color: rgba(255,255,255,.16);
-    color: var(--texto);
-  }
-  .btn-secundario:hover { background: rgba(255,255,255,.08); }
+    gap: 9px;
+    margin: 25px 0 15px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #93c5fd;
+}
 
-  .rodape {
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px solid var(--linha);
+.section-title::after {
+    content: "";
+    height: 1px;
+    background: var(--border);
+    flex: 1;
+}
+
+form {
+    display: grid;
+    gap: 16px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.field {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+}
+
+.field label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .035em;
+    color: #cbd5e1;
+}
+
+.required {
+    color: var(--danger);
+}
+
+.field input,
+.field select {
+    width: 100%;
+    height: 45px;
+    padding: 0 13px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+    background: rgba(3,9,18,.45);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    outline: none;
+    transition: .2s;
+}
+
+.field input::placeholder {
+    color: #64748b;
+}
+
+.field input:focus,
+.field select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+
+.field input[aria-invalid="true"] {
+    border-color: var(--danger);
+}
+
+.field select option {
+    background: var(--surface);
+}
+
+.help {
+    color: #64748b;
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.error {
+    color: var(--danger);
+    font-size: 11px;
+}
+
+.alert {
+    padding: 13px 15px;
+    border: 1px solid rgba(248,113,113,.3);
+    background: rgba(248,113,113,.08);
+    color: #fca5a5;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-bottom: 20px;
+}
+
+.alert ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.password-wrap {
+    position: relative;
+}
+
+.password-wrap input {
+    padding-right: 65px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #93a4b8;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 7px;
+}
+
+.strength {
+    display: flex;
+    gap: 5px;
+    margin-top: 9px;
+}
+
+.strength span {
+    height: 3px;
+    flex: 1;
+    border-radius: 5px;
+    background: #263448;
+    transition: background .2s;
+}
+
+.strength-label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-top: 6px;
+}
+
+.password-match {
+    font-size: 10px;
+    margin-top: 5px;
+}
+
+.actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 11px;
+    margin-top: 12px;
+}
+
+.btn {
+    min-height: 46px;
+    border-radius: 9px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+    text-decoration: none;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.btn-primary {
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+    opacity: .65;
+    cursor: wait;
+    transform: none;
+}
+
+.btn-secondary {
+    background: rgba(255,255,255,.035);
+    border: 1px solid var(--border);
+    color: #cbd5e1;
+}
+
+.btn-secondary:hover {
+    background: rgba(255,255,255,.08);
+}
+
+.footer {
+    margin-top: 23px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
     text-align: center;
-    font-size: .82rem;
-    color: var(--suave);
-  }
-  .rodape a { color: #60a5fa; text-decoration: none; }
-  .rodape a:hover { text-decoration: underline; }
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.footer a {
+    color: #60a5fa;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.security {
+    text-align: center;
+    color: #64748b;
+    font-size: 10px;
+    margin-top: 19px;
+}
+
+@media(max-width: 520px) {
+    body {
+        padding: 24px 13px;
+        align-items: flex-start;
+    }
+
+    .card {
+        padding: 24px 18px;
+        border-radius: 15px;
+    }
+
+    .header h1 {
+        font-size: 23px;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media(prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        transition: none !important;
+    }
+}
 </style>
 </head>
+
 <body>
 
-<div class="card">
+<main class="page">
 
-  <div class="card-topo">
-    <img src="{% static 'img/barco-l42.png' %}" alt="USV L42">
-    <h1>Criar conta</h1>
-    <p>
-      Depois de criar, um <b>diretor</b> precisa aprovar seu acesso
-      antes de você começar.
-    </p>
-  </div>
-
-  {% if form.non_field_errors %}
-    <div class="alerta alerta-erro" role="alert">
-      <ul>
-        {% for erro in form.non_field_errors %}<li>{{ erro }}</li>{% endfor %}
-      </ul>
+    <div class="brand">
+        <div class="brand-name">UmiOrbit</div>
+        <div class="brand-caption">Sistema para controle e auditoria de embarcações.</div>
     </div>
-  {% endif %}
 
-  <form method="post" novalidate>
-    {% csrf_token %}
+    <section class="card">
 
-    <div class="linha-dupla">
-      <div class="campo">
-        <label for="{{ form.first_name.id_for_label }}">
-          Nome {% if form.first_name.field.required %}<b>*</b>{% endif %}
-        </label>
-        {{ form.first_name }}
-        {% if form.first_name.errors %}
-          <div class="erro-campo">{{ form.first_name.errors|join:", " }}</div>
+        <div class="header">
+            <h1>Criar sua conta</h1>
+            <p>
+                Cadastre seus dados para solicitar acesso à plataforma
+                de operações.
+            </p>
+        </div>
+
+        <div class="approval">
+            <div class="approval-icon">◈</div>
+            <div>
+                <strong>Acesso sujeito à aprovação</strong>
+                <span>
+                    Após o cadastro, um diretor deverá analisar e
+                    aprovar sua solicitação de acesso ao sistema.
+                </span>
+            </div>
+        </div>
+
+        {% if form.non_field_errors %}
+        <div class="alert" role="alert">
+            {{ form.non_field_errors }}
+        </div>
         {% endif %}
-      </div>
 
-      <div class="campo">
-        <label for="{{ form.last_name.id_for_label }}">
-          Sobrenome {% if form.last_name.field.required %}<b>*</b>{% endif %}
-        </label>
-        {{ form.last_name }}
-        {% if form.last_name.errors %}
-          <div class="erro-campo">{{ form.last_name.errors|join:", " }}</div>
-        {% endif %}
-      </div>
+        <form method="post" id="registerForm" novalidate>
+            {% csrf_token %}
+
+            <div class="section-title">01 · Identificação</div>
+
+            <div class="grid">
+
+                <div class="field">
+                    <label for="{{ form.first_name.id_for_label }}">
+                        Nome
+                    </label>
+                    {{ form.first_name }}
+                    {% for error in form.first_name.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="field">
+                    <label for="{{ form.last_name.id_for_label }}">
+                        Sobrenome
+                    </label>
+                    {{ form.last_name }}
+                    {% for error in form.last_name.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+            </div>
+
+            <div class="field">
+                <label for="{{ form.email.id_for_label }}">
+                    E-mail
+                    {% if form.email.field.required %}
+                    <span class="required">*</span>
+                    {% endif %}
+                </label>
+                {{ form.email }}
+                {% for error in form.email.errors %}
+                <span class="error">{{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="section-title">02 · Credenciais de acesso</div>
+
+            <div class="field">
+                <label for="{{ form.username.id_for_label }}">
+                    Nome de usuário <span class="required">*</span>
+                </label>
+                {{ form.username }}
+                <span class="help">
+                    Utilize letras, números, ponto ou underline.
+                </span>
+                {% for error in form.username.errors %}
+                <span class="error">{{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="grid">
+
+                <div class="field">
+                    <label for="{{ form.password1.id_for_label }}">
+                        Senha <span class="required">*</span>
+                    </label>
+
+                    <div class="password-wrap">
+                        {{ form.password1 }}
+                        <button type="button"
+                            class="toggle-password"
+                            data-target="{{ form.password1.id_for_label }}">
+                            Mostrar
+                        </button>
+                    </div>
+
+                    <div class="strength" id="strength">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+
+                    <span class="strength-label" id="strengthLabel">
+                        Informe uma senha segura
+                    </span>
+
+                    {% for error in form.password1.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="field">
+                    <label for="{{ form.password2.id_for_label }}">
+                        Confirmar senha <span class="required">*</span>
+                    </label>
+
+                    <div class="password-wrap">
+                        {{ form.password2 }}
+                        <button type="button"
+                            class="toggle-password"
+                            data-target="{{ form.password2.id_for_label }}">
+                            Mostrar
+                        </button>
+                    </div>
+
+                    <span class="password-match" id="passwordMatch"
+                        aria-live="polite"></span>
+
+                    {% for error in form.password2.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+            </div>
+
+            <div class="section-title">03 · Informações profissionais</div>
+
+            <div class="grid">
+
+                <div class="field">
+                    <label for="{{ form.cargo.id_for_label }}">
+                        Cargo / função
+                    </label>
+                    {{ form.cargo }}
+                    {% for error in form.cargo.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="field">
+                    <label for="{{ form.telefone.id_for_label }}">
+                        Telefone
+                    </label>
+                    {{ form.telefone }}
+                    {% for error in form.telefone.errors %}
+                    <span class="error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    Criar conta →
+                </button>
+
+                <a href="{% url 'login' %}" class="btn btn-secondary">
+                    Já tenho conta
+                </a>
+            </div>
+
+        </form>
+
+        <div class="footer">
+            Já possui cadastro?
+            <a href="{% url 'login' %}">Acessar plataforma →</a>
+        </div>
+
+    </section>
+
+    <div class="security">
+        COR SYSTEM · Ambiente de acesso restrito
     </div>
 
-    <div class="campo">
-      <label for="{{ form.username.id_for_label }}">
-        Usuário (login) <b>*</b>
-      </label>
-      {{ form.username }}
-      <small class="ajuda">
-        Letras, números, ponto ou underline. Será seu login.
-      </small>
-      {% if form.username.errors %}
-        <div class="erro-campo">{{ form.username.errors|join:", " }}</div>
-      {% endif %}
-    </div>
+</main>
 
-    <div class="campo">
-      <label for="{{ form.email.id_for_label }}">
-        E-mail {% if form.email.field.required %}<b>*</b>{% endif %}
-      </label>
-      {{ form.email }}
-      {% if form.email.errors %}
-        <div class="erro-campo">{{ form.email.errors|join:", " }}</div>
-      {% endif %}
-    </div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
 
-    <div class="linha-dupla">
-      <div class="campo">
-        <label for="{{ form.password1.id_for_label }}">Senha <b>*</b></label>
-        {{ form.password1 }}
-        <small class="ajuda">Mínimo 8 caracteres.</small>
-        {% if form.password1.errors %}
-          <div class="erro-campo">{{ form.password1.errors|join:", " }}</div>
-        {% endif %}
-      </div>
+    const password = document.getElementById(
+        "{{ form.password1.id_for_label }}"
+    );
 
-      <div class="campo">
-        <label for="{{ form.password2.id_for_label }}">Confirmar <b>*</b></label>
-        {{ form.password2 }}
-        {% if form.password2.errors %}
-          <div class="erro-campo">{{ form.password2.errors|join:", " }}</div>
-        {% endif %}
-      </div>
-    </div>
+    const confirmation = document.getElementById(
+        "{{ form.password2.id_for_label }}"
+    );
 
-    <div class="linha-dupla">
-      <div class="campo">
-        <label for="{{ form.cargo.id_for_label }}">Cargo / função</label>
-        {{ form.cargo }}
-        {% if form.cargo.errors %}
-          <div class="erro-campo">{{ form.cargo.errors|join:", " }}</div>
-        {% endif %}
-      </div>
+    const strengthBars = document.querySelectorAll("#strength span");
+    const strengthLabel = document.getElementById("strengthLabel");
+    const matchLabel = document.getElementById("passwordMatch");
 
-      <div class="campo">
-        <label for="{{ form.telefone.id_for_label }}">Telefone</label>
-        {{ form.telefone }}
-        {% if form.telefone.errors %}
-          <div class="erro-campo">{{ form.telefone.errors|join:", " }}</div>
-        {% endif %}
-      </div>
-    </div>
+    // Visualizar ou ocultar senha
+    document.querySelectorAll(".toggle-password").forEach(button => {
+        button.addEventListener("click", () => {
+            const field = document.getElementById(
+                button.dataset.target
+            );
 
-    <div class="acoes">
-      <button class="btn btn-primario" type="submit">Criar conta</button>
-      <a class="btn btn-secundario" href="{% url 'login' %}">Já tenho conta</a>
-    </div>
-  </form>
+            const visible = field.type === "password";
 
-  <div class="rodape">
-    Já tem conta? <a href="{% url 'login' %}">Entrar →</a>
-  </div>
+            field.type = visible ? "text" : "password";
+            button.textContent = visible ? "Ocultar" : "Mostrar";
+            button.setAttribute("aria-label",
+                visible ? "Ocultar senha" : "Mostrar senha"
+            );
+        });
+    });
 
-</div>
+    // Indicador de força da senha
+    function checkStrength() {
+        const value = password.value;
+        let score = 0;
+
+        if (value.length >= 8) score++;
+        if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score++;
+        if (/[0-9]/.test(value)) score++;
+        if (/[^a-zA-Z0-9]/.test(value)) score++;
+
+        const labels = [
+            "Informe uma senha segura",
+            "Senha fraca",
+            "Senha razoável",
+            "Senha boa",
+            "Senha forte"
+        ];
+
+        const colors = [
+            "#263448",
+            "#ef4444",
+            "#f59e0b",
+            "#3b82f6",
+            "#4ade80"
+        ];
+
+        strengthBars.forEach((bar, index) => {
+            bar.style.background = index < score
+                ? colors[score]
+                : "#263448";
+        });
+
+        strengthLabel.textContent = labels[score];
+    }
+
+    // Confirmação de senha
+    function checkMatch() {
+        if (!confirmation.value) {
+            matchLabel.textContent = "";
+            confirmation.setCustomValidity("");
+            return;
+        }
+
+        const matches = password.value === confirmation.value;
+
+        matchLabel.textContent = matches
+            ? "✓ As senhas coincidem"
+            : "As senhas não coincidem";
+
+        matchLabel.style.color = matches
+            ? "#4ade80"
+            : "#f87171";
+
+        confirmation.setCustomValidity(
+            matches ? "" : "As senhas não coincidem."
+        );
+    }
+
+    password.addEventListener("input", () => {
+        checkStrength();
+        checkMatch();
+    });
+
+    confirmation.addEventListener("input", checkMatch);
+
+    // Validação dos campos obrigatórios
+    document.querySelectorAll("#registerForm input").forEach(field => {
+        if (field.required) {
+            field.addEventListener("blur", () => {
+                field.setAttribute(
+                    "aria-invalid",
+                    !field.checkValidity()
+                );
+            });
+
+            field.addEventListener("input", () => {
+                if (field.checkValidity()) {
+                    field.removeAttribute("aria-invalid");
+                }
+            });
+        }
+    });
+
+    // Prevenir envio com confirmação incorreta
+    document.getElementById("registerForm")
+        .addEventListener("submit", event => {
+
+            checkMatch();
+
+            if (!document.getElementById("registerForm").checkValidity()) {
+                event.preventDefault();
+                document.getElementById("registerForm")
+                    .reportValidity();
+                return;
+            }
+
+            const button = document.getElementById("submitBtn");
+
+            button.disabled = true;
+            button.textContent = "Enviando cadastro...";
+        });
+
+});
+</script>
 
 </body>
 </html>
